@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+# pre-commit — validate HTML, JS, Vue syntax, and blog Markdown workflow before committing
+set -euo pipefail
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+failures=0
+check_file() {
+  local file="$1"
+  local basename
+  basename=$(basename "$file")
+
+  # ── HTML structure check ──
+  if [[ "$file" == *.html ]]; then
+    if python3 -c "
+import html.parser, sys
+class C(html.parser.HTMLParser):
+    def __init__(s): super().__init__(); s.st=[]
+    def handle_starttag(s,t,a):
+        if t not in 'br hr img input meta link area base col embed source track wbr'.split(): s.st.append(t)
+    def handle_endtag(s,t):
+        if s.st and s.st[-1]==t: s.st.pop()
+with open('$file') as f: c=C(); c.feed(f.read())
+if c.st: sys.exit(1)
+" 2>/dev/null; then
+      echo -e "  ${GREEN}✓${NC} HTML structure: $basename"
+    else
+      echo -e "  ${RED}✗${NC} HTML structure: $basename (unclosed tags)"
+      failures=$((failures + 1))
+    fi
+  fi
+
+  # ── JS syntax check ──
+  if [[ "$file" == *.html ]] || [[ "$file" == *.js ]]; then
+    if node -e "
+const fs = require('fs');
+const content = fs.readFileSync('$file', 'utf8');
+const matches = content.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g);
+for (const m of matches) {
+  new Function(m[1]);
+}
+" 2>/dev/null; then
+      echo -e "  ${GREEN}✓${NC} JS syntax:    $basename"
+    else
+      echo -e "  ${RED}✗${NC} JS syntax:    $basename"
+      failures=$((failures + 1))
+    fi
+  fi
+
+  # ── Vue template check (ensure createApp + mount exist) ──
+  if [[ "$file" == *.html ]]; then
+    if grep -q 'createApp' "$file" && grep -q '\.mount' "$file"; then
+      echo -e "  ${GREEN}✓${NC} Vue template: $basename"
+    else
+      echo -e "  ${YELLOW}○${NC} Vue template: $basename (no Vue app detected, skipping)"
+    fi
+  fi
+}
+
+run_blog_check() {
+  local script
+  script=$(node -e "
+try {
+  const scripts = require('./package.json').scripts || {};
+  process.stdout.write(scripts['check:blog'] ? 'check:blog' : (scripts['build:blog'] ? 'build:blog' : ''));
+} catch (error) {
+  process.exit(1);
+}
+" 2>/dev/null || true)
+
+  if [[ -z "$script" ]]; then
+    echo -e "  ${RED}✗${NC} Blog workflow: no check:blog or build:blog script found"
+    failures=$((failures + 1))
+    return
+  fi
+
+  echo -e "  ${YELLOW}→${NC} Blog workflow: npm run $script"
+  if npm run "$script"; then
+    echo -e "  ${GREEN}✓${NC} Blog workflow: $script"
+  else
+    echo -e "  ${RED}✗${NC} Blog workflow: $script"
+    failures=$((failures + 1))
+  fi
+}
+
+echo ""
+echo -e "${YELLOW}┌─ pre-commit ──────────────────────────┐${NC}"
+
+# Check staged HTML/JS files and blog Markdown/build inputs.
+# HTML/JS validators need files that still exist; blog checks should also run for renames/deletes.
+staged_html_js=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(html|js)$' || true)
+staged_blog=$(git diff --cached --name-only --diff-filter=ACMRD | grep -E '^(content/posts/.*\.md|content/posts/assets/.*|scripts/build-blog\.mjs|package(-lock)?\.json|blog/.*\.html)$' || true)
+
+if [[ -z "$staged_html_js" && -z "$staged_blog" ]]; then
+  echo "│  No staged HTML/JS or blog files to check │"
+  echo -e "${YELLOW}└──────────────────────────────────────────┘${NC}"
+  echo ""
+  exit 0
+fi
+
+if [[ -n "$staged_html_js" ]]; then
+  while IFS= read -r file; do
+    [[ -z "$file" ]] && continue
+    echo "│  $file"
+    check_file "$file"
+  done <<< "$staged_html_js"
+fi
+
+if [[ -n "$staged_blog" ]]; then
+  echo "│  blog workflow"
+  run_blog_check
+fi
+
+echo -e "${YELLOW}└──────────────────────────────────────────┘${NC}"
+echo ""
+
+if [[ $failures -gt 0 ]]; then
+  echo -e "${RED}pre-commit: $failures check(s) failed — commit blocked${NC}"
+  exit 1
+fi
+
+echo -e "${GREEN}pre-commit: all checks passed ✓${NC}"
+echo ""

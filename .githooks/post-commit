@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# post-commit — run full local syntax checks after a commit is created.
+set -euo pipefail
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+echo ""
+echo -e "${YELLOW}┌─ post-commit syntax check ─────────────┐${NC}"
+
+node <<'NODE'
+const fs = require('fs');
+const path = require('path');
+const { execFileSync } = require('child_process');
+
+const root = process.cwd();
+const voidTags = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']);
+const htmlFiles = [];
+const jsFiles = [];
+
+function walk(dir) {
+  if (!fs.existsSync(dir)) return;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === 'node_modules' || entry.name === '.git') continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) walk(full);
+    else if (entry.name.endsWith('.html')) htmlFiles.push(full);
+    else if (entry.name.endsWith('.js') || entry.name.endsWith('.mjs')) jsFiles.push(full);
+  }
+}
+
+walk(root);
+
+function rel(file) {
+  return path.relative(root, file) || '.';
+}
+
+function checkHtmlStructure(file, html) {
+  const stack = [];
+  const tagPattern = /<\/?([a-zA-Z][a-zA-Z0-9:-]*)(?:\s[^<>]*)?>/g;
+  let match;
+  while ((match = tagPattern.exec(html))) {
+    const raw = match[0];
+    const tag = match[1].toLowerCase();
+    if (raw.startsWith('<!--') || raw.startsWith('<!') || raw.startsWith('<?') || raw.endsWith('/>') || voidTags.has(tag)) continue;
+    if (raw.startsWith('</')) {
+      if (stack.at(-1) !== tag) throw new Error(`${rel(file)} has unexpected </${tag}>; open stack: ${stack.join(' > ')}`);
+      stack.pop();
+    } else {
+      stack.push(tag);
+    }
+  }
+  if (stack.length) throw new Error(`${rel(file)} has unclosed tags: ${stack.join(' > ')}`);
+}
+
+for (const file of htmlFiles) {
+  const html = fs.readFileSync(file, 'utf8');
+  checkHtmlStructure(file, html);
+  for (const match of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)) {
+    new Function(match[1]);
+  }
+  if (html.includes('createApp') && !html.includes('.mount(')) {
+    throw new Error(`${rel(file)} has createApp but no .mount()`);
+  }
+}
+
+for (const file of jsFiles) {
+  execFileSync(process.execPath, ['--check', file], { stdio: 'inherit' });
+}
+
+console.log(`Checked ${htmlFiles.length} HTML file(s) and ${jsFiles.length} JS/MJS file(s).`);
+NODE
+
+if [[ -f package.json ]]; then
+  npm run check:blog
+fi
+
+echo -e "${YELLOW}└──────────────────────────────────────────┘${NC}"
+echo -e "${GREEN}post-commit: syntax checks passed ✓${NC}"
+echo ""
