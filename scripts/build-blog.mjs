@@ -88,6 +88,27 @@ async function main() {
   await fs.rm(blogDir, { force: true, recursive: true });
   await fs.mkdir(blogDir, { recursive: true });
   await fs.writeFile(path.join(blogDir, 'index.html'), renderBlogIndex(posts), 'utf8');
+  // recent posts JSON for homepage
+  const recent = posts.slice(0, 3).map((p) => {
+    let coverUrl = '';
+    if (p.cover) {
+      if (/^https?:\/\//i.test(p.cover) || p.cover.startsWith('//')) {
+        coverUrl = p.cover;
+      } else {
+        const targetPath = path.resolve(path.dirname(p.sourcePath), decodeUrlPath(p.cover));
+        coverUrl = './' + relativePath(targetPath);
+      }
+    }
+    return {
+      title: p.title,
+      date: p.dateText,
+      description: p.description,
+      slug: p.slug,
+      cover: coverUrl,
+      tags: p.tags
+    };
+  });
+  await fs.writeFile(path.join(blogDir, 'recent.json'), JSON.stringify(recent), 'utf8');
 
   await Promise.all(
     posts.map(async (post) => {
