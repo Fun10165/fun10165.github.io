@@ -423,7 +423,7 @@ function renderComparePage(post, versions) {
     content: v.content
   })));
 
-  const escaped = data.replaceAll('\\', '\\\\').replaceAll('</script>', '<\\/script>');
+  const safeData = data.replaceAll('</script>', '<\\/script>');
 
   return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -475,7 +475,7 @@ function renderComparePage(post, versions) {
   </section>
 </main>
 <script>
-  var VERSIONS = ${escaped};
+  var VERSIONS = ${safeData};
   var v1 = document.getElementById('v1');
   var v2 = document.getElementById('v2');
   var btn = document.getElementById('diffBtn');
