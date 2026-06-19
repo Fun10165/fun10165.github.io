@@ -88,6 +88,7 @@ async function main() {
   await fs.rm(blogDir, { force: true, recursive: true });
   await fs.mkdir(blogDir, { recursive: true });
   await fs.writeFile(path.join(blogDir, 'index.html'), renderBlogIndex(posts), 'utf8');
+  await writeHomepageRecentPosts(posts.slice(0, 3));
 
   await Promise.all(
     posts.map(async (post) => {
@@ -594,6 +595,43 @@ function rewriteCoverUrl(cover, slug, sourcePath) {
   const outputDir = path.join(blogDir, slug);
   const targetPath = path.resolve(sourceDir, decodeUrlPath(cover));
   return relativeUrlPath(outputDir, targetPath);
+}
+
+async function writeHomepageRecentPosts(posts) {
+  const indexPath = path.join(rootDir, 'index.html');
+  const html = await fs.readFile(indexPath, 'utf8');
+  const start = '            // BLOG_RECENT_POSTS_START';
+  const end = '            // BLOG_RECENT_POSTS_END';
+
+  if (!html.includes(start) || !html.includes(end)) {
+    throw new BuildError('index.html is missing BLOG_RECENT_POSTS markers.');
+  }
+
+  const payload = posts
+    .map((post) => `            ${JSON.stringify({
+      title: post.title,
+      date: formatDate(post.dateText),
+      description: post.description,
+      slug: post.slug,
+      cover: homepageCoverUrl(post.cover, post.sourcePath),
+      tags: post.tags
+    })}`)
+    .join(',\n');
+
+  const pattern = new RegExp(`${escapeRegExp(start)}[\\s\\S]*?${escapeRegExp(end)}`);
+  const next = html.replace(pattern, `${start}\n${payload}\n${end}`);
+  await fs.writeFile(indexPath, next, 'utf8');
+}
+
+function homepageCoverUrl(cover, sourcePath) {
+  if (!cover) return '';
+  if (/^https?:\/\//i.test(cover) || cover.startsWith('//')) return cover;
+  const targetPath = path.resolve(path.dirname(sourcePath), decodeUrlPath(cover));
+  return `./${relativePath(targetPath)}`;
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function htmlDocument({ content, description, rootPrefix, title }) {

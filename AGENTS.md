@@ -100,6 +100,7 @@ The blog build is a Node-based static generation workflow only: source Markdown 
 ### Blog workflow
 - Add posts as `content/posts/*.md` with frontmatter: `title`, `date`, `description`, `tags`, and optional `slug`.
 - Optional frontmatter field `cover` (relative or absolute image URL) adds a hero image to post pages and a thumbnail on the blog index.
+- Blog build also injects the three most recent posts into homepage `index.html` between `BLOG_RECENT_POSTS_START` / `BLOG_RECENT_POSTS_END`; do not edit generated entries by hand.
 - Run `npm run build:blog` to regenerate `blog/index.html` and each `blog/<slug>/index.html` page.
 - Run `npm run check:blog` before committing generated blog output when touching posts or the generator.
 - Every build appends a content snapshot to `content/post-history/<slug>.json` when the content hash changes (skipped in `--check` mode).
