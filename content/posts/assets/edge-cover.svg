@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="320" viewBox="0 0 640 320" role="img" aria-labelledby="title desc">
+  <title id="title">Markdown edge case cover</title>
+  <desc id="desc">Static abstract cover art with simple Markdown symbols and safe SVG shapes.</desc>
+  <rect width="640" height="320" rx="28" fill="#111827"/>
+  <circle cx="104" cy="88" r="46" fill="#38bdf8" opacity="0.85"/>
+  <circle cx="536" cy="232" r="62" fill="#f59e0b" opacity="0.8"/>
+  <path d="M96 232 C188 108 300 108 392 232 S552 232 576 112" fill="none" stroke="#a78bfa" stroke-width="14" stroke-linecap="round"/>
+  <g fill="#f8fafc" font-family="system-ui, sans-serif" font-weight="700" text-anchor="middle">
+    <text x="214" y="174" font-size="64">#</text>
+    <text x="320" y="174" font-size="56">MD</text>
+    <text x="430" y="174" font-size="64">*</text>
+  </g>
+</svg>

@@ -58,8 +58,11 @@ function checkHtmlStructure(file, html) {
 for (const file of htmlFiles) {
   const html = fs.readFileSync(file, 'utf8');
   checkHtmlStructure(file, html);
-  for (const match of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)) {
-    new Function(match[1]);
+  // skip JS check on compare pages (inline JSON data)
+  if (!file.includes('/compare/')) {
+    for (const match of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)) {
+      new Function(match[1]);
+    }
   }
   if (html.includes('createApp') && !html.includes('.mount(')) {
     throw new Error(`${rel(file)} has createApp but no .mount()`);

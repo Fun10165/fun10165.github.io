@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Blog · Fun10165</title>
-  <meta name="description" content="Notes from Fun10165." />
+  <title>History · Markdown Edge Cases: 数学、表格与嵌套结构 · Fun10165</title>
+  <meta name="description" content="Version history for Markdown Edge Cases: 数学、表格与嵌套结构" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -13,7 +13,7 @@
     :root { --paper: rgba(255,251,244,0.88); --panel: rgba(46,62,79,0.92); --text: #1f2b38; --muted: #5d6a77; --accent: #d4653f; --accent-2: #2f7f78; --line: rgba(31,43,56,0.12); --shadow: 0 20px 60px rgba(31,43,56,0.16); }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body { margin:0; min-height:100vh; color:var(--text); font-family:"IBM Plex Sans",sans-serif; line-height:1.7; background-color:#efe5d2; background-image:linear-gradient(rgba(239,229,210,0.82),rgba(239,229,210,0.92)),url('../bg-landscape.webp'); background-attachment:fixed; background-position:center; background-size:cover; }
+    body { margin:0; min-height:100vh; color:var(--text); font-family:"IBM Plex Sans",sans-serif; line-height:1.7; background-color:#efe5d2; background-image:linear-gradient(rgba(239,229,210,0.82),rgba(239,229,210,0.92)),url('../../../bg-landscape.webp'); background-attachment:fixed; background-position:center; background-size:cover; }
     a { color:var(--accent-2); text-decoration-thickness:0.08em; text-underline-offset:0.18em; } a:hover { color:var(--accent); }
     .shell { width:min(900px,calc(100% - 2rem)); margin:0 auto; padding:1rem 0 4rem; }
     .nav { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:1rem 0 1.5rem; }
@@ -62,23 +62,31 @@
 <body>
 <main class="shell">
       <nav class="nav" aria-label="Primary navigation">
-    <a class="brand" href="../"><span class="brand-mark">F</span><span>Fun10165</span></a>
+    <a class="brand" href="../../../"><span class="brand-mark">F</span><span>Fun10165</span></a>
     <div class="nav-links">
-      <a href="../">Home</a>
-      <a href="../blog/">Blog</a>
+      <a href="../../../">Home</a>
+      <a href="../../../blog/">Blog</a>
     </div>
   </nav>
       <section class="hero-panel">
-        <p class="eyebrow">Blog</p>
-        <h1>Notes from Fun10165</h1>
-        <p>Static posts generated from Markdown, with GitHub-flavored Markdown and KaTeX math rendered at build time.</p>
+        <p class="eyebrow"><a href="../../">Markdown Edge Cases: 数学、表格与嵌套结构</a> · History</p>
+        <h1>Version History</h1>
+        <p>2 snapshots — <a href="../compare/">compare versions</a></p>
       </section>
-      <section class="post-list" aria-label="Blog posts"><article class="post-card">
-        <img src="../../content/posts/assets/edge-diagram.svg" alt="" class="post-cover" />
-        <p class="post-meta"><time datetime="2026-06-19">Jun 19, 2026</time><span class="tag-list"><span class="tag">#markdown</span><span class="tag">#fixtures</span><span class="tag">#数学</span></span></p>
-        <h2><a href="./markdown-edge-cases/">Markdown Edge Cases: 数学、表格与嵌套结构</a></h2>
-        <p>A fixture post covering GFM, math, nested quotes, relative media, and multilingual text.</p>
-      </article></section>
+      <section class="post-list" aria-label="Post versions">
+    <article class="post-card">
+      <p class="post-meta">2026-06-19 <span style="color:var(--muted)">· v2</span></p>
+      <h2><a href="./2/">Markdown Edge Cases: 数学、表格与嵌套结构</a></h2>
+      <p>A fixture post covering GFM, math, nested quotes, relative media, and multilingual text.</p>
+    </article>
+  
+
+    <article class="post-card">
+      <p class="post-meta">2026-06-19 <span style="color:var(--muted)">· v1</span></p>
+      <h2><a href="./1/">Markdown Edge Cases: 数学、表格与嵌套结构</a></h2>
+      <p>A fixture post covering GFM, math, nested quotes, relative media, and multilingual text.</p>
+    </article>
+  </section>
     </main>
 </body>
 </html>

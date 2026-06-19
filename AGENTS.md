@@ -60,6 +60,13 @@ on every commit. Configured via `git config core.hooksPath .githooks`. It blocks
 
 Run manually: `bash .githooks/pre-commit`
 
+### Post-commit hook
+
+A post-commit hook in `.githooks/post-commit` runs full HTML/JS/Vue validation on all files and `check:blog`
+after each commit. It is non-blocking and skips JS syntax checks on generated compare pages.
+
+Run manually: `bash .githooks/post-commit`
+
 The homepage has no bundler. Vue 3 is loaded from CDN at runtime:
 
 ```html
@@ -92,12 +99,14 @@ The blog build is a Node-based static generation workflow only: source Markdown 
 
 ### Blog workflow
 - Add posts as `content/posts/*.md` with frontmatter: `title`, `date`, `description`, `tags`, and optional `slug`.
+- Optional frontmatter field `cover` (relative or absolute image URL) adds a hero image to post pages and a thumbnail on the blog index.
 - Run `npm run build:blog` to regenerate `blog/index.html` and each `blog/<slug>/index.html` page.
 - Run `npm run check:blog` before committing generated blog output when touching posts or the generator.
+- Every build appends a content snapshot to `content/post-history/<slug>.json` when the content hash changes (skipped in `--check` mode).
+- Generated pages: `blog/<slug>/history/index.html` (version list), `blog/<slug>/history/<version-id>/index.html` (archived version), `blog/<slug>/compare/index.html` (client-side line diff between any two versions).
 - Markdown conversion should use a unified/remark/rehype pipeline, not regex conversion: `remark-gfm`, `remark-math`, `rehype-sanitize`, `rehype-katex`, `rehype-slug`, and `rehype-stringify`.
 - Math rendering choice: LaTeX-style inline/block formulae are rendered to static KaTeX HTML; include KaTeX CSS in generated pages.
 - Preserve link and image paths/extensions from Markdown where safe, and sanitize raw Markdown HTML before KaTeX/stringify.
-
 ## Important Files
 
 | File | Role |

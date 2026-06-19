@@ -7,6 +7,7 @@ tags:
   - fixtures
   - 数学
 slug: markdown-edge-cases
+cover: ./assets/edge-diagram.svg
 ---
 
 This sample post is intentionally a little strange so the blog builder has to exercise real Markdown parsing instead of happy-path prose.
@@ -16,6 +17,10 @@ Here is inline math, $e^{i\pi} + 1 = 0$, mixed into a sentence with CJK text：�
 $$
 \int_{0}^{1} x^2\,dx = \frac{1}{3}
 $$
+
+## Test
+
+Test
 
 ## GFM checklist
 

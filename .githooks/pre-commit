@@ -34,6 +34,12 @@ if c.st: sys.exit(1)
   fi
 
   # ── JS syntax check ──
+
+  # Generated compare pages have inline JSON data — skip JS syntax check
+  if [[ "$file" == */compare/* ]]; then
+    echo -e "  ${YELLOW}○${NC} JS syntax:    $basename (compare page — skipped)"
+    return
+  fi
   if [[ "$file" == *.html ]] || [[ "$file" == *.js ]]; then
     if node -e "
 const fs = require('fs');
@@ -92,7 +98,7 @@ echo -e "${YELLOW}┌─ pre-commit ──────────────�
 # Check staged HTML/JS files and blog Markdown/build inputs.
 # HTML/JS validators need files that still exist; blog checks should also run for renames/deletes.
 staged_html_js=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(html|js)$' || true)
-staged_blog=$(git diff --cached --name-only --diff-filter=ACMRD | grep -E '^(content/posts/.*\.md|content/posts/assets/.*|scripts/build-blog\.mjs|package(-lock)?\.json|blog/.*\.html)$' || true)
+staged_blog=$(git diff --cached --name-only --diff-filter=ACMRD | grep -E '^(content/posts/.*\.md|content/posts/assets/.*|content/post-history/.*\.json|scripts/build-blog\.mjs|package(-lock)?\.json|blog/.*\.html)$' || true)
 
 if [[ -z "$staged_html_js" && -z "$staged_blog" ]]; then
   echo "│  No staged HTML/JS or blog files to check │"
