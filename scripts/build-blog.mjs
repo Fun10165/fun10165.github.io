@@ -387,7 +387,24 @@ function renderPostPage(post, prev, next, allPosts) {
 }
 
 function renderComments(slug) {
-  return `<section class="comments" id="comments"><h2>Comments</h2><p style="color:var(--muted);font-size:0.88rem;">Leave a comment via <a href="https://github.com/Fun10165/fun10165.github.io/discussions">GitHub Discussions</a>.</p></section>`;
+  return `<section class="comments" id="comments"><h2>Comments</h2>
+<script src="https://giscus.app/client.js"
+  data-repo="Fun10165/fun10165.github.io"
+  data-repo-id="MDEwOlJlcG9zaXRvcnkyMDQ0MjUyNDU="
+  data-category="General"
+  data-category-id="DIC_kwDODC9IHc4C_jM_"
+  data-mapping="pathname"
+  data-strict="0"
+  data-reactions-enabled="1"
+  data-emit-metadata="0"
+  data-input-position="top"
+  data-theme="light"
+  data-lang="zh-CN"
+  crossorigin="anonymous"
+  async>
+</script>
+<noscript>Please enable JavaScript to view comments via <a href="https://github.com/Fun10165/fun10165.github.io/discussions">GitHub Discussions</a>.</noscript>
+</section>`;
 }
 
 // ── RSS feed ──
