@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>Fun10165 Blog</title>
+  <link>https://fun10165.github.io/blog/</link>
+  <description>Notes from Fun10165</description>
+  <language>zh-CN</language>
+  <lastBuildDate>Sat, 20 Jun 2026 15:49:04 GMT</lastBuildDate>
+  <atom:link href="https://fun10165.github.io/blog/feed.xml" rel="self" type="application/rss+xml"/>
+    <item>
+      <title>我在网上修文物: 互联网考古记录</title>
+      <link>https://fun10165.github.io/blog/internet-archaeology-record/</link>
+      <guid>https://fun10165.github.io/blog/internet-archaeology-record/</guid>
+      <pubDate>Sat, 20 Jun 2026 00:00:00 GMT</pubDate>
+      <description>笔者在搜集中国LLM发展资料的时候，发现即使是三四年前的互联网资料都难以检索。特书此文。</description>
+      <category>搜索引擎</category>
+      <category>Wayback Machine</category>
+      <category>AI 搜索供应商</category>
+      <category>私域流量平台</category>
+    </item>
+    <item>
+      <title>Markdown Edge Cases: 数学、表格与嵌套结构</title>
+      <link>https://fun10165.github.io/blog/markdown-edge-cases/</link>
+      <guid>https://fun10165.github.io/blog/markdown-edge-cases/</guid>
+      <pubDate>Fri, 19 Jun 2026 00:00:00 GMT</pubDate>
+      <description>A fixture post covering GFM, math, nested quotes, relative media, and multilingual text.</description>
+      <category>markdown</category>
+      <category>fixtures</category>
+      <category>数学</category>
+    </item>
+</channel>
+</rss>
