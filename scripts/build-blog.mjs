@@ -374,7 +374,7 @@ function renderPostPage(post, prev, next, allPosts) {
   const seriesHtml = seriesPosts.length ? `<p class="series-note">Part of series <strong>${escapeHtml(post.series)}</strong>: ${seriesPosts.map((p, i) => `<a href="../${escapeAttribute(p.slug)}/">${i + 1}. ${escapeHtml(p.title)}</a>`).join(', ')}</p>` : '';
   const prevHtml = prev ? `<a class="prev-next-link" href="../${escapeAttribute(prev.slug)}/">← ${escapeHtml(prev.title)}</a>` : '';
   const nextHtml = next ? `<a class="prev-next-link" href="../${escapeAttribute(next.slug)}/">${escapeHtml(next.title)} →</a>` : '';
-  const tagPageLinks = post.tags.map(t => `<a href="../tags/${encodeURIComponent(t)}/">#${escapeHtml(t)}</a>`).join(' ');
+  const tagPageLinks = post.tags.map(t => `<a href="../tags/${escapeHtml(t)}/">#${escapeHtml(t)}</a>`).join(' ');
   return htmlDocument({
     content: `<main class="shell">${siteNav('../../')}<article class="article-panel"><header class="post-header">${coverHtml}<p class="post-meta"><time datetime="${escapeHtml(post.dateText)}">${formatDate(post.dateText)}</time> · ${post.readingTime}${renderTags(post.tags)}</p><h1>${escapeHtml(post.title)}</h1>${post.description ? `<p class="description">${escapeHtml(post.description)}</p>` : ''}</header>${post.toc ? `<aside class="toc-container">${post.toc}</aside>` : ''}<div class="content">${post.html}</div></article><footer class="post-footer"><div class="prev-next">${prevHtml}${nextHtml}</div>${seriesHtml}${tagPageLinks ? `<p class="post-tags">Tags: ${tagPageLinks}</p>` : ''}<p class="post-links"><a href="./history/">View history</a> &nbsp;·&nbsp; <a href="./compare/">Compare versions</a> &nbsp;·&nbsp; <a href="../">All posts</a></p></footer>${renderComments(post.slug)}</main>`,
     description: post.description || post.title,
@@ -436,7 +436,7 @@ async function writeTagPages(posts) {
     tagMap.get(t).push(p);
   }
   for (const [tag, tagged] of tagMap) {
-    const td = path.join(blogDir, 'tags', encodeURIComponent(tag));
+    const td = path.join(blogDir, 'tags', tag);
     await fs.mkdir(td, { recursive: true });
     const list = tagged.map(p => `<article class="post-card"><p class="post-meta"><time datetime="${escapeHtml(p.dateText)}">${formatDate(p.dateText)}</time> · ${p.readingTime}${renderTags(p.tags)}</p><h2><a href="../../${escapeAttribute(p.slug)}/">${escapeHtml(p.title)}</a></h2>${p.description ? `<p>${escapeHtml(p.description)}</p>` : ''}</article>`).join('\n');
     await fs.writeFile(path.join(td, 'index.html'), htmlDocument({ content: `<main class="shell">${siteNav('../../')}<section class="hero-panel"><p class="eyebrow">Tag</p><h1>#${escapeHtml(tag)}</h1><p>${tagged.length} post${tagged.length === 1 ? '' : 's'}</p></section><section class="post-list">${list}</section></main>`, description: `Posts tagged #${tag}`, rootPrefix: '../../', title: `#${tag} · Fun10165`, ogType: 'website' }), 'utf8');
@@ -454,7 +454,7 @@ async function writeSeriesPages(posts) {
   }
   for (const [name, sposts] of seriesMap) {
     sposts.sort((a, b) => a.dateValue - b.dateValue);
-    const sd = path.join(blogDir, 'series', encodeURIComponent(name));
+    const sd = path.join(blogDir, 'series', name);
     await fs.mkdir(sd, { recursive: true });
     const list = sposts.map((p, i) => `<article class="post-card"><p class="post-meta"><span style="color:var(--accent)">${i + 1}.</span> <time datetime="${escapeHtml(p.dateText)}">${formatDate(p.dateText)}</time> · ${p.readingTime}${renderTags(p.tags)}</p><h2><a href="../../${escapeAttribute(p.slug)}/">${escapeHtml(p.title)}</a></h2>${p.description ? `<p>${escapeHtml(p.description)}</p>` : ''}</article>`).join('\n');
     await fs.writeFile(path.join(sd, 'index.html'), htmlDocument({ content: `<main class="shell">${siteNav('../../')}<section class="hero-panel"><p class="eyebrow">Series</p><h1>${escapeHtml(name)}</h1><p>${sposts.length} post${sposts.length === 1 ? '' : 's'}</p></section><section class="post-list">${list}</section></main>`, description: `Series: ${name}`, rootPrefix: '../../', title: `${name} · Fun10165`, ogType: 'website' }), 'utf8');
@@ -608,7 +608,7 @@ function siteNav(rootPrefix) {
 
 function renderTags(tags) {
   if (!tags.length) return '';
-  const links = tags.map(t => `<a href="../../tags/${encodeURIComponent(t)}/" style="text-decoration:none;color:var(--muted)">#${escapeHtml(t)}</a>`).join(' ');
+  const links = tags.map(t => `<a href="../../tags/${escapeHtml(t)}/" style="text-decoration:none;color:var(--muted)">#${escapeHtml(t)}</a>`).join(' ');
   return `<span class="tag-list">${links}</span>`;
 }
 
