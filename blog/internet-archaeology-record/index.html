@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Blog · Fun10165</title>
-  <meta name="description" content="Notes from Fun10165." />
+  <title>我在网上修文物: 互联网考古记录 · Fun10165</title>
+  <meta name="description" content="笔者在搜集中国LLM发展资料的时候，发现即使是三四年前的互联网资料都难以检索。特书此文。" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -13,7 +13,7 @@
     :root { --paper: rgba(255,251,244,0.88); --panel: rgba(46,62,79,0.92); --text: #1f2b38; --muted: #5d6a77; --accent: #d4653f; --accent-2: #2f7f78; --line: rgba(31,43,56,0.12); --shadow: 0 20px 60px rgba(31,43,56,0.16); }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body { margin:0; min-height:100vh; color:var(--text); font-family:"IBM Plex Sans",sans-serif; line-height:1.7; background-color:#efe5d2; background-image:linear-gradient(rgba(239,229,210,0.82),rgba(239,229,210,0.92)),url('../bg-landscape.webp'); background-attachment:fixed; background-position:center; background-size:cover; }
+    body { margin:0; min-height:100vh; color:var(--text); font-family:"IBM Plex Sans",sans-serif; line-height:1.7; background-color:#efe5d2; background-image:linear-gradient(rgba(239,229,210,0.82),rgba(239,229,210,0.92)),url('../../bg-landscape.webp'); background-attachment:fixed; background-position:center; background-size:cover; }
     a { color:var(--accent-2); text-decoration-thickness:0.08em; text-underline-offset:0.18em; } a:hover { color:var(--accent); }
     .shell { width:min(900px,calc(100% - 2rem)); margin:0 auto; padding:1rem 0 4rem; }
     .nav { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:1rem 0 1.5rem; }
@@ -62,29 +62,42 @@
 <body>
 <main class="shell">
       <nav class="nav" aria-label="Primary navigation">
-    <a class="brand" href="../"><span class="brand-mark">F</span><span>Fun10165</span></a>
+    <a class="brand" href="../../"><span class="brand-mark">F</span><span>Fun10165</span></a>
     <div class="nav-links">
-      <a href="../">Home</a>
-      <a href="../blog/">Blog</a>
+      <a href="../../">Home</a>
+      <a href="../../blog/">Blog</a>
     </div>
   </nav>
-      <section class="hero-panel">
-        <p class="eyebrow">Blog</p>
-        <h1>Notes from Fun10165</h1>
-        <p>Static posts generated from Markdown, with GitHub-flavored Markdown and KaTeX math rendered at build time.</p>
-      </section>
-      <section class="post-list" aria-label="Blog posts"><article class="post-card">
-        <img src="../../content/posts/assets/wayback-machine.svg" alt="" class="post-cover" />
-        <p class="post-meta"><time datetime="2026-06-20">Jun 20, 2026</time><span class="tag-list"><span class="tag">#搜索引擎</span><span class="tag">#Wayback Machine</span><span class="tag">#AI 搜索供应商</span><span class="tag">#私域流量平台</span></span></p>
-        <h2><a href="./internet-archaeology-record/">我在网上修文物: 互联网考古记录</a></h2>
-        <p>笔者在搜集中国LLM发展资料的时候，发现即使是三四年前的互联网资料都难以检索。特书此文。</p>
+      <article class="article-panel">
+        <header class="post-header">
+          <img src="../../content/posts/assets/wayback-machine.svg" alt="" class="post-cover-hero" />
+          <p class="post-meta"><time datetime="2026-06-20">Jun 20, 2026</time><span class="tag-list"><span class="tag">#搜索引擎</span><span class="tag">#Wayback Machine</span><span class="tag">#AI 搜索供应商</span><span class="tag">#私域流量平台</span></span></p>
+          <h1>我在网上修文物: 互联网考古记录</h1>
+          <p class="description">笔者在搜集中国LLM发展资料的时候，发现即使是三四年前的互联网资料都难以检索。特书此文。</p>
+        </header>
+        <div class="content"><h2 id="引子">引子</h2>
+<p>在几几还不会年年的时候的自己看过的几年前的资料现大多已经散佚了：你也许能查到两年前的天气，但是已经很难查到两年前的今天的B站日榜第一是什么了，更别提两年前的今天你撸了多少次管。当然最后一个纯个人性的信息只能靠自己记录来解决，但是网上的东西还是有别人记录过的。</p>
+<h2 id="两种古">两种古</h2>
+<p>互联网的考古有两种古，一种是古而不移，之前有人放在那里了，就不动了，后来要么是无人问津要么是被隐蔽地删除了；另一种是忒修斯之船，古的东西被新的东西覆盖了。幸好这两种古都可以通过归档的手段进行存储。</p>
+<h2 id="wayback-machine">Wayback Machine</h2>
+<blockquote>
+<p>Explore more than 1 trillion web pages saved over time</p>
+</blockquote>
+<p>Wayback Machine 存储了非常多的互联网资料，特别适合查找一些过往资料。
+但是 archive 机制不明，对于一些并不冷门但可能存放于私域流量平台上的网页没有 archive.</p>
+<p>btw, 现在的英语高考卷A题还在用上古网站的排版。去参观一下上古网站的排版就知道我在说啥了。<code>https://web.archive.org/web/19970304041045/http://ubl.com/</code></p>
+<h2 id="搜索引擎">搜索引擎</h2>
+<p>Google，Bing，DuckDuckGo 都是可以制定特定时间范围的，</p>
+<p>另外提一嘴已经成为棍母的搜索引擎快照，先是百度停了，后是 Google 停了，这无疑是对互联网考古的一大打击。</p>
+<h2 id="私域流量平台">私域流量平台</h2>
+<p>私域流量平台，包括 X、哔哩哔哩、贴吧、小红书、微信、知乎都是极大的富矿。但是据我所知这几家平台的检索机制就没有一个正常的，在这些平台上检索内容十分费劲，需要通过各种巧思来检索到几年前的内容。</p>
+<h2 id="ai-搜索供应商">AI 搜索供应商</h2>
+<p>很遗憾的是 EXA 这个 AI 搜索供应商降低了老旧信息的权重，导致我让 Agent 搜索几年前的消息时特别费劲。</p>
+<p>关于 AI 搜索供应商，本来“获取信息”应该是 Agent 构建的非常重要的一环，但是长期以来并没有任何话题关注度。</p></div>
       </article>
-<article class="post-card">
-        <img src="../../content/posts/assets/edge-diagram.svg" alt="" class="post-cover" />
-        <p class="post-meta"><time datetime="2026-06-19">Jun 19, 2026</time><span class="tag-list"><span class="tag">#markdown</span><span class="tag">#fixtures</span><span class="tag">#数学</span></span></p>
-        <h2><a href="./markdown-edge-cases/">Markdown Edge Cases: 数学、表格与嵌套结构</a></h2>
-        <p>A fixture post covering GFM, math, nested quotes, relative media, and multilingual text.</p>
-      </article></section>
+      <p style="margin-top:1rem;color:var(--muted);font-size:0.85rem;">
+        <a href="./history/">View history</a> &nbsp;·&nbsp; <a href="./compare/">Compare versions</a>
+      </p>
     </main>
 </body>
 </html>
