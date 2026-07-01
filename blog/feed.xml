@@ -5,8 +5,19 @@
   <link>https://fun10165.github.io/blog/</link>
   <description>Notes from Fun10165</description>
   <language>zh-CN</language>
-  <lastBuildDate>Wed, 01 Jul 2026 11:08:40 GMT</lastBuildDate>
+  <lastBuildDate>Wed, 01 Jul 2026 11:10:44 GMT</lastBuildDate>
   <atom:link href="https://fun10165.github.io/blog/feed.xml" rel="self" type="application/rss+xml"/>
+    <item>
+      <title>校园网 + 外网双通方案：EZ4Connect + Clash Verge Rev</title>
+      <link>https://fun10165.github.io/blog/campus-network-dual-access/</link>
+      <guid>https://fun10165.github.io/blog/campus-network-dual-access/</guid>
+      <pubDate>Wed, 01 Jul 2026 00:00:00 GMT</pubDate>
+      <description>一套稳定的校园网/外网分流方案：EZ4Connect 负责校园网链路，Clash Verge Rev 接管全局流量并智能分流，TUN 模式无感代理。</description>
+      <category>校园网</category>
+      <category>Clash</category>
+      <category>EZ4Connect</category>
+      <category>网络</category>
+    </item>
     <item>
       <title>20260620的日记</title>
       <link>https://fun10165.github.io/blog/diary-260620/</link>
@@ -14,17 +25,6 @@
       <pubDate>Sun, 21 Jun 2026 00:00:00 GMT</pubDate>
       <description>20260620的日记</description>
       <category>日记</category>
-    </item>
-    <item>
-      <title>校园网 + 外网双通方案：EZ4Connect + Clash Verge Rev</title>
-      <link>https://fun10165.github.io/blog/campus-network-dual-access/</link>
-      <guid>https://fun10165.github.io/blog/campus-network-dual-access/</guid>
-      <pubDate>Sun, 21 Jun 2026 00:00:00 GMT</pubDate>
-      <description>一套稳定的校园网/外网分流方案：EZ4Connect 负责校园网链路，Clash Verge Rev 接管全局流量并智能分流，TUN 模式无感代理。</description>
-      <category>校园网</category>
-      <category>Clash</category>
-      <category>EZ4Connect</category>
-      <category>网络</category>
     </item>
     <item>
       <title>我在网上修文物: 互联网考古记录</title>
