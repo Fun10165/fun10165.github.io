@@ -1,0 +1,18 @@
+[
+  {
+    "id": "1",
+    "createdAt": "2026-07-01T11:08:40.232Z",
+    "hash": "4ad01f28bf375b10",
+    "title": "校园网 + 外网双通方案：EZ4Connect + Clash Verge Rev",
+    "date": "2026-06-21",
+    "description": "一套稳定的校园网/外网分流方案：EZ4Connect 负责校园网链路，Clash Verge Rev 接管全局流量并智能分流，TUN 模式无感代理。",
+    "tags": [
+      "校园网",
+      "Clash",
+      "EZ4Connect",
+      "网络"
+    ],
+    "cover": "",
+    "content": "\n在任意互联网环境里同时访问校内资源和外网，是一个经典的「鱼和熊掌」问题。VPN 客户端和代理软件各管一摊，切来切去很烦。这套方案让它们配合工作，做到无感分流。\n\n## 背景\n\n### 代理客户端选择\n\nVPN 客户端优先采用 [Mihomo](https://github.com/MetaCubeX/mihomo) 内核的。我刚上大学时最好用的基于 Mihomo 的客户端是 [Clash Verge Rev](https://github.com/clash-verge-rev/clash-verge-rev)，所以选择了它。\n\n但最近 Clash Verge Rev 被爆出尝试在主线中加入收集用户设备信息的功能，因此建议读者探索其他基于 Mihomo 内核的客户端。\n\n### 校园网环境\n\n学校先前用的是深信服的 EasyConnect 客户端——[臭名昭著](https://www.v2ex.com/t/761277)，会往用户电脑塞根证书，极其危险。后来切换到了 ATrust 客户端，但仍然是深信服开发。\n\n\n### 绕过深信服\n为了在避免使用深信服客户端的同时兼容深信服的 VPN 协议，浙大同学开发了 [ZJUConnect](https://github.com/Mythologyli/zju-connect)，而 HITSZ 的 [chenx](https://github.com/chenx-dust) 也基于此开发了 [EZ4Connect](https://github.com/chenx-dust/EZ4Connect)。\n\n### 校园网登录\n\n通过 ATrust 无法正常在 `10.248.98.2` 登录校园网。实际上可以通过 `https://net.hitsz.edu.cn/srun_portal_pc?ac_id=1&theme=basic4&wlanuserip=<本机IP>` 的方式给自己设备登录，但需要预先知道本机在校园网中的 IP。\n\n手动登录略显复杂，可以通过自动登录解决——使用我开源的 [hitsz-autonet](https://github.com/Fun10165/hitsz-autonet)，自动拼接认证 URL 中的本机 IP。\n\n## 架构\n\n```\n浏览器/App → Clash TUN (7897)\n                ├── 校园网资源 → EZ4Connect (127.0.0.1:11081) → 校园网\n                ├── 国内网站    → DIRECT\n                └── 外网        → 机场节点\n```\n\nClash 开启 TUN 模式接管所有流量，通过规则把校园网 IP 段和域名路由到 EZ4Connect 暴露的本地 HTTP 代理端口，其余流量走机场或直连。\n\n## 第一步：安装 EZ4Connect\n\n从 [GitHub Releases](https://github.com/chenx-dust/EZ4Connect/releases) 下载对应平台版本。\n\n对于 HITSZ 来说，安装后不需要任何配置即可使用。\n\n点「连接服务器」，确认连接成功。EZ4Connect 会在本机 `127.0.0.1:11081` 暴露一个 HTTP 代理，校园网资源均可通过这个端口访问。\n\n## 第二步：安装 Clash Verge Rev\n\n从 [GitHub Releases](https://github.com/clash-verge-rev/clash-verge-rev/releases) 下载安装。\n\n## 第三步：添加机场订阅\n\n打开 Clash Verge Rev → **Profiles** → 粘贴机场订阅链接，更新。\n\n## 第四步：添加本地代理节点\n\n在 Clash Verge Rev 的配置里加一段本地节点（通过订阅配置的 Merge 功能，或直接在配置文件里加）：\n\n```yaml\nproxies:\n  - name: local-campus\n    type: http\n    server: 127.0.0.1\n    port: 11081\n```\n\n这个节点指向 EZ4Connect 暴露的本地代理端口。\n\n## 第五步：分流规则\n\n这是最关键的一步。新建一个 **Rules Overlay** 文件（Profiles → New → Rules），粘贴：\n\n```yaml\nprepend:\n  # 校园网精确直连\n  - 'IP-CIDR,10.248.98.2/32,DIRECT'\n  - 'DOMAIN-SUFFIX,net.hitsz.edu.cn,DIRECT'\n  - 'DOMAIN-SUFFIX,ids.hit.edu.cn,DIRECT'\n  - 'DOMAIN-SUFFIX,mineru.net,DIRECT'\n  - 'DOMAIN-SUFFIX,openxlab.org.cn,DIRECT'\n  - 'DOMAIN-SUFFIX,aliyuncs.com,DIRECT'\n  # 校园网其余走本地代理\n  - 'IP-CIDR,10.248.0.0/14,local-campus'\n```\n\n在 Profiles 里，把当前订阅的 **rules** 绑定到这个 Rules Overlay 文件。\n\n规则逻辑：\n- 少数已知校园网域名直接直连\n- 校园网 IP 段（`10.248.0.0/14`）统一走 `local-campus` 节点，即 EZ4Connect\n- 其余流量按机场规则走：国内直连，外网走机场\n\n## 第六步：开启 TUN 模式\n\nClash Verge Rev → 设置 → **TUN 模式** → 开启。\n\nTUN 模式在系统网络栈层面接管流量，浏览器、终端、App 都不需要单独配代理。\n\n## 验证\n\n- 浏览器访问校内网站（如 `ids.hit.edu.cn`）能正常打开\n- `curl -x http://127.0.0.1:11081 http://10.248.x.x/some-internal-api` 能通\n- 外网访问正常，走机场出口 IP\n- Clash 日志里能看到校园网 IP 段命中了 `local-campus` 规则\n\n有问题可以检查：\n- EZ4Connect 连接状态（是否掉线）\n- Clash TUN 模式是否成功启动（需要管理员权限）\n- 规则文件缩进是否正确（YAML 对空格敏感）\n\n---\n\n**一句话总结**：EZ4Connect 负责连校园网暴露本地 `11081` 端口，Clash Verge Rev 接管所有流量，校园网段/域名走 `11081` 或直连，其余走机场。\n"
+  }
+]
