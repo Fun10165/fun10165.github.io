@@ -1,0 +1,81 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  ogImage?: string;
+  ogType?: 'website' | 'article';
+  publishedTime?: string;
+  article?: boolean;
+  currentPath?: string;
+}
+
+const {
+  title = 'Fun10165',
+  description = 'Notes from Fun10165 on systems, learning, and the web.',
+  ogImage,
+  ogType = 'website',
+  publishedTime,
+  article = false,
+  currentPath = Astro.url.pathname,
+} = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const absoluteImage = ogImage ? new URL(ogImage, Astro.site) : undefined;
+const pageTitle = title === 'Fun10165' ? title : `${title} · Fun10165`;
+const navItems = [
+  { href: '/', label: 'Home' },
+  { href: '/blog/', label: 'Blog' },
+  { href: '/blog/search/', label: 'Search' },
+];
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:site_name" content="Fun10165" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:url" content={canonical} />
+    {absoluteImage && <meta property="og:image" content={absoluteImage} />}
+    {publishedTime && <meta property="article:published_time" content={`${publishedTime}T00:00:00Z`} />}
+    <meta name="twitter:card" content={absoluteImage ? 'summary_large_image' : 'summary'} />
+    <link rel="alternate" type="application/rss+xml" title="Fun10165 Blog" href="/blog/feed.xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    {article && <meta name="color-scheme" content="light" />}
+    {article && <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.47/dist/katex.min.css" />}
+    <slot name="head" />
+  </head>
+  <body>
+    <div class={article ? 'article-shell' : 'site-shell'}>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a class="brand" href="/">
+          <span class="brand-mark" aria-hidden="true">F</span>
+          <span>Fun10165</span>
+        </a>
+        <div class="nav-links">
+          {navItems.map(({ href, label }) => (
+            <a href={href} aria-current={currentPath === href || (href !== '/' && currentPath.startsWith(href)) ? 'page' : undefined}>{label}</a>
+          ))}
+          <a href="/blog/feed.xml">RSS</a>
+        </div>
+      </nav>
+      <slot />
+      <footer class="site-footer">
+        <div>fun10165.github.io</div>
+        <div>
+          <a href="https://github.com/Fun10165">GitHub</a>
+          <a href="/classic/">Classic site</a>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

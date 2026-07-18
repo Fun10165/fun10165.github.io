@@ -1,0 +1,124 @@
+---
+import PostList from '../../../components/PostList.astro';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { getPosts } from '../../../lib/site';
+
+const posts = await getPosts();
+const searchPosts = posts.map((post) => ({
+  title: post.data.title,
+  description: post.data.description,
+  tags: post.data.tags,
+}));
+const searchPayload = JSON.stringify(searchPosts).replace(
+  /[<>&\u2028\u2029]/g,
+  (character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`,
+);
+const initialMessage = `Type to search ${posts.length} posts`;
+---
+
+<BaseLayout title="Search" description="Search Fun10165 blog posts" currentPath="/blog/search/">
+  <header class="page-hero surface">
+    <div>
+      <p class="eyebrow">Blog search</p>
+      <h1 class="display-title">Search</h1>
+      <p class="lede">Search post titles, descriptions, and tags.</p>
+    </div>
+  </header>
+
+  <section class="search-panel surface" aria-labelledby="search-label">
+    <label id="search-label" for="search">Search posts</label>
+    <input
+      class="search-input"
+      id="search"
+      name="q"
+      type="search"
+      placeholder="Search posts..."
+      autocomplete="off"
+      autofocus
+    />
+  </section>
+
+  <div id="search-status" class="empty-state surface" role="status" aria-live="polite">
+    {initialMessage}
+  </div>
+  <div id="search-results" hidden>
+    <PostList posts={posts} />
+  </div>
+
+  <script is:inline id="search-data" type="application/json" set:html={searchPayload}></script>
+
+<script>
+  interface SearchPost {
+    title: string;
+    description: string;
+    tags: string[];
+  }
+
+  const input = document.querySelector<HTMLInputElement>('#search');
+  const results = document.querySelector<HTMLElement>('#search-results');
+  const status = document.querySelector<HTMLElement>('#search-status');
+  const payload = document.querySelector<HTMLScriptElement>('#search-data');
+  const cards = Array.from(document.querySelectorAll<HTMLElement>('#search-results .post-card'));
+
+  if (!input || !results || !status || !payload) {
+    throw new Error('Search page is missing required elements.');
+  }
+
+  const posts = JSON.parse(payload.textContent || '[]') as SearchPost[];
+  if (posts.length !== cards.length) {
+    throw new Error('Search payload and rendered post list are out of sync.');
+  }
+
+  const showStatus = (message: string) => {
+    status.textContent = message;
+    status.hidden = false;
+    results.hidden = true;
+  };
+
+  const updateResults = () => {
+    const query = input.value.toLocaleLowerCase().trim();
+    if (!query) {
+      for (const card of cards) card.style.display = '';
+      showStatus(`Type to search ${posts.length} posts`);
+      return;
+    }
+
+    let matchCount = 0;
+    posts.forEach((post, index) => {
+      const haystack = `${post.title} ${post.description} ${post.tags.join(' ')}`.toLocaleLowerCase();
+      const matches = haystack.includes(query);
+      const card = cards[index];
+      if (!card) throw new Error(`Search result card ${index} is missing.`);
+      card.style.display = matches ? '' : 'none';
+      if (matches) matchCount += 1;
+    });
+
+    if (matchCount === 0) {
+      showStatus(`No posts matching "${query}"`);
+      return;
+    }
+
+    status.hidden = true;
+    results.hidden = false;
+  };
+
+  input.addEventListener('input', updateResults);
+</script>
+</BaseLayout>
+
+<style>
+  .search-panel {
+    padding: clamp(1.25rem, 3vw, 1.8rem);
+    margin-bottom: 1rem;
+  }
+
+  .search-panel label {
+    display: block;
+    margin-bottom: 0.55rem;
+    font-weight: 700;
+  }
+
+  .search-input {
+    margin: 0;
+  }
+</style>

@@ -1,0 +1,18 @@
+---
+import PostList from '../../components/PostList.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getPosts } from '../../lib/site';
+
+const posts = await getPosts();
+---
+
+<BaseLayout title="Blog" description="Fun10165 的文章、实验记录与长期笔记。" currentPath="/blog/">
+  <header class="page-hero surface">
+    <div>
+      <p class="eyebrow">Writing archive</p>
+      <h1 class="display-title">My Blog</h1>
+      <p class="lede">关于系统、网络、学习工具与互联网的长期记录。文章来自 Markdown，在构建时生成静态页面。</p>
+    </div>
+  </header>
+  <PostList posts={posts} />
+</BaseLayout>

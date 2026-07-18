@@ -1,0 +1,127 @@
+---
+import { render } from 'astro:content';
+
+import Comments from '../../../components/Comments.astro';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import {
+  estimateReadingTime,
+  formatPostDate,
+  getPosts,
+  postCoverUrl,
+  postSlug,
+  type Post,
+} from '../../../lib/site';
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  return posts.map((post, index) => ({
+    params: { slug: postSlug(post) },
+    props: {
+      post,
+      newer: index > 0 ? posts[index - 1] : undefined,
+      older: index < posts.length - 1 ? posts[index + 1] : undefined,
+      seriesPosts: post.data.series
+        ? posts.filter((candidate) => candidate.data.series === post.data.series).sort((a, b) => a.data.date.localeCompare(b.data.date))
+        : [],
+    },
+  }));
+}
+
+interface Props {
+  post: Post;
+  newer?: Post;
+  older?: Post;
+  seriesPosts: Post[];
+}
+
+const { post, newer, older, seriesPosts } = Astro.props;
+const { Content, headings } = await render(post);
+const cover = postCoverUrl(post);
+const toc = headings.filter(({ depth }) => depth === 2 || depth === 3);
+const currentSeriesIndex = seriesPosts.findIndex((candidate) => postSlug(candidate) === postSlug(post));
+---
+
+<BaseLayout
+  title={post.data.title}
+  description={post.data.description}
+  ogImage={cover}
+  ogType="article"
+  publishedTime={post.data.date}
+  article
+>
+  <article>
+    <header class="article-header surface">
+      <p class="eyebrow">{post.data.series || 'Article'}</p>
+      <h1>{post.data.title}</h1>
+      <div class="meta-line">
+        <time datetime={post.data.date}>{formatPostDate(post.data.date)}</time>
+        <span aria-hidden="true">·</span>
+        <span>{estimateReadingTime(post.body || '')}</span>
+      </div>
+      <p class="lede">{post.data.description}</p>
+      {post.data.tags.length > 0 && (
+        <div class="tags">
+          {post.data.tags.map((tag) => <a class="tag" href={`/blog/tags/${tag}/`}>#{tag}</a>)}
+        </div>
+      )}
+      {cover && <img class="article-cover" src={cover} alt="" />}
+    </header>
+
+    <div class="article-grid">
+      <div class="article-body surface">
+        <Content />
+      </div>
+      {toc.length >= 2 && (
+        <nav class="toc surface" aria-label="Table of contents">
+          <strong>On this page</strong>
+          <ol>
+            {toc.map((heading) => (
+              <li class:list={{ 'depth-3': heading.depth === 3 }}><a href={`#${heading.slug}`}>{heading.text}</a></li>
+            ))}
+          </ol>
+        </nav>
+      )}
+    </div>
+
+    <div class="article-actions">
+      {post.data.series && (
+        <section class="list-panel surface">
+          <div class="meta-line">
+            <span>Series</span>
+            <span aria-hidden="true">·</span>
+            <a href={`/blog/series/${post.data.series}/`}>{post.data.series}</a>
+            <span aria-hidden="true">·</span>
+            <span>{currentSeriesIndex + 1} / {seriesPosts.length}</span>
+          </div>
+        </section>
+      )}
+
+      <div class="prev-next">
+        {newer ? (
+          <a class="action-card surface" href={`/blog/${postSlug(newer)}/`}>
+            <small>Newer post</small>
+            <strong>{newer.data.title}</strong>
+          </a>
+        ) : <span />}
+        {older && (
+          <a class="action-card action-card--next surface" href={`/blog/${postSlug(older)}/`}>
+            <small>Older post</small>
+            <strong>{older.data.title}</strong>
+          </a>
+        )}
+      </div>
+
+      <section class="list-panel surface">
+        <div class="meta-line">
+          <span>Versions</span>
+          <span aria-hidden="true">·</span>
+          <a href={`/blog/${postSlug(post)}/history/`}>History</a>
+          <span aria-hidden="true">·</span>
+          <a href={`/blog/${postSlug(post)}/compare/`}>Compare</a>
+        </div>
+      </section>
+
+      <Comments />
+    </div>
+  </article>
+</BaseLayout>

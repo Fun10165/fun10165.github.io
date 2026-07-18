@@ -1,0 +1,150 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { formatPostDate, getPosts, postCoverUrl, postSlug } from '../lib/site';
+import '../styles/home.css';
+
+const recentPosts = (await getPosts()).slice(0, 3);
+const yearsOnline = new Date().getFullYear() - 2019;
+const timeline = [
+  { year: '2019', title: '初一，第一次把网页放上 GitHub Pages', text: '那时候页面只有几行 HTML，但它真的上线了。这种“我写的东西别人能看到”的感觉，足够让人记很多年。' },
+  { year: '后来', title: '从乱写到慢慢会写', text: '写过小东西，踩过坑，也学会了把页面、代码和表达整理得更像自己。' },
+  { year: '现在', title: '重写这张首页', text: '不把最早的版本删掉，而是把它留下来。新的页面继续向前，旧的页面负责提醒自己从哪开始。' },
+];
+const now = [
+  '就读于哈尔滨工业大学（深圳），关注 Rust 编程语言、高性能计算与 AI 基础设施。',
+  '热衷于中国的教育公平事业。',
+  '给最早那个只有几行 HTML 的版本留一个长期有效的入口，当作时间胶囊。',
+];
+const projects = [
+  { tag: 'Rust', title: 'hitsz-info-fetcher', href: 'https://github.com/Fun10165/hitsz-info-fetcher', text: 'HITSZ 校园信息抓取工具，用 Rust 写的。' },
+  { tag: 'Kotlin', title: 'hitsz-autonet', href: 'https://github.com/Fun10165/hitsz-autonet', text: 'HITSZ 校园网自动认证：Python 守护进程与 Android 客户端。' },
+  { tag: 'Python', title: 'anki-open-template', href: 'https://github.com/Fun10165/anki-open-template', text: 'TypeScript 驱动的多格式 Anki 模板与 APKG 测试牌组。' },
+  { tag: 'TeX', title: 'intromath-zh_CN', href: 'https://github.com/Fun10165/intromath-zh_CN', text: '《數學導論》中文翻译。' },
+  { tag: 'JavaScript', title: 'napcat-keyword', href: 'https://github.com/Fun10165/napcat-keyword', text: 'NapCat 关键词回复插件。' },
+  { tag: 'Astro', title: 'fun10165.github.io', href: 'https://github.com/Fun10165/fun10165.github.io', text: '你现在看到的这个网站本身。' },
+];
+---
+
+<BaseLayout title="Fun10165" description="Fun10165 — Rust PL, HPC, AI Infra. 哈尔滨工业大学（深圳）.">
+  <main>
+    <section class="home-hero surface">
+      <figure class="home-portrait">
+        <div class="home-avatar-frame">
+          <img src="/avatar.webp" alt="Fun10165" width="1920" height="1920" fetchpriority="high" />
+        </div>
+        <figcaption class="avatar-credit">Avatar by <a href="https://www.pixiv.net/users/2406967" target="_blank" rel="noopener">くらげさん</a></figcaption>
+      </figure>
+
+      <div class="home-intro">
+        <img class="home-logo" src="/hit-logo.svg" alt="哈尔滨工业大学（深圳）" />
+        <p class="eyebrow">Harbin Institute of Technology, Shenzhen</p>
+        <h1>Fun10165</h1>
+        <p class="home-lead">
+          <strong>Rust PL · HPC · AI Infra</strong><br />
+          热衷于中国的教育公平事业。从 2019 年用几行 HTML 搭的第一个页面，到现在 27 个公开仓库——代码和表达，都在慢慢长成自己的样子。
+        </p>
+        <div class="home-actions">
+          <a class="button" href="https://github.com/Fun10165">GitHub 主页</a>
+          <a class="button button-outline" href="#projects">看看项目</a>
+          <a class="button button-outline" href="/blog/">读 Blog</a>
+        </div>
+        <nav class="home-jumps" aria-label="Homepage sections">
+          <a href="#story">Story</a><a href="#now">Now</a><a href="#blog">Blog</a><a href="#projects">Projects</a><a href="#legacy">Legacy</a>
+        </nav>
+        <div class="home-stats" aria-label="Profile statistics">
+          <div class="home-stat"><strong>{yearsOnline}+</strong><span>Years online</span></div>
+          <div class="home-stat"><strong>27</strong><span>Public repos</span></div>
+          <div class="home-stat"><strong>7</strong><span>Followers</span></div>
+          <div class="home-stat"><strong>Shenzhen</strong><span>China</span></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="home-grid">
+      <section id="story" class="home-card story-card surface">
+        <p class="eyebrow">From first page to now</p>
+        <h2>Story</h2>
+        <p>这一页不想做成“标准个人主页模板”。它更像一次回看：从最开始能把网页传上去就很开心，到现在终于愿意认真整理自己的入口。</p>
+        <div class="timeline">
+          {timeline.map((item) => (
+            <div class="timeline-item">
+              <div class="timeline-year">{item.year}</div>
+              <div><div class="timeline-title">{item.title}</div><div class="timeline-text">{item.text}</div></div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section id="now" class="home-card now-card surface">
+        <p class="eyebrow">Current focus</p>
+        <h2>Now</h2>
+        <p>目前在 HITSZ 读书，课余写代码、做项目、折腾各种有意思的东西。</p>
+        <div class="now-list">
+          {now.map((item) => <div class="now-item"><span class="now-dot" aria-hidden="true"></span><div>{item}</div></div>)}
+        </div>
+      </section>
+
+      <section id="blog" class="home-card blog-card surface">
+        <p class="eyebrow">Recently published</p>
+        <h2>Blog</h2>
+        <p>把更长的笔记、项目复盘和数学公式整理成静态文章。Markdown 写作，由 Astro 构建后直接托管在 GitHub Pages。</p>
+        <div class="meta-line">Markdown · KaTeX · Static HTML</div>
+        <div class="recent-grid">
+          {recentPosts.map((post) => {
+            const cover = postCoverUrl(post);
+            return (
+              <a class="recent-post" href={`/blog/${postSlug(post)}/`}>
+                {cover && <img class="recent-post-cover" src={cover} alt="" loading="lazy" />}
+                <div><time datetime={post.data.date}>{formatPostDate(post.data.date)}</time><h3>{post.data.title}</h3><p>{post.data.description}</p></div>
+                <span class="text-link">阅读全文 →</span>
+              </a>
+            );
+          })}
+        </div>
+        <a class="text-link" href="/blog/">进入完整 Blog</a>
+      </section>
+
+      <section id="projects" class="home-card projects-card surface">
+        <p class="eyebrow">Selected work</p>
+        <h2>Projects</h2>
+        <p>GitHub 上有 27 个公开仓库。这里放了几个 pinned 项目，更多内容在 <a href="https://github.com/Fun10165?tab=repositories">GitHub</a>。</p>
+        <div class="projects-grid">
+          {projects.map((project) => (
+            <article class="project">
+              <div class="project-tag">{project.tag}</div>
+              <h3><a href={project.href} target="_blank" rel="noopener">{project.title}</a></h3>
+              <p>{project.text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section id="legacy" class="home-card legacy-card surface">
+        <div>
+          <p class="eyebrow">Time capsule</p>
+          <h2>Legacy</h2>
+          <p>旧版首页已经完整保留，内容没有重写，只是换了一个入口。如果你想看当年最原始的页面，可以直接打开 2019 版本。</p>
+        </div>
+        <div class="legacy-actions">
+          <a class="button" href="/classic/">打开 2019 版本</a>
+          <button id="egg-toggle" class="button button-outline" type="button" aria-expanded="false" aria-controls="egg-note">显示彩蛋说明</button>
+        </div>
+        <p id="egg-note" class="egg-note muted" hidden>那个页面保留了原始结构和文本：<code>My Blog</code>、<code>Mario Series</code>，以及最直接的几行内容。它现在是这个站点的一段时间切片。</p>
+      </section>
+
+      <div class="home-era">2019 → {new Date().getFullYear()}</div>
+    </div>
+  </main>
+
+  <script>
+    const toggle = document.querySelector<HTMLButtonElement>('#egg-toggle');
+    const note = document.querySelector<HTMLElement>('#egg-note');
+    toggle?.addEventListener('click', () => {
+      if (!note) return;
+      const willOpen = note.hidden;
+      note.hidden = !willOpen;
+      toggle.setAttribute('aria-expanded', String(willOpen));
+      toggle.textContent = willOpen ? '隐藏彩蛋说明' : '显示彩蛋说明';
+    });
+  </script>
+</BaseLayout>

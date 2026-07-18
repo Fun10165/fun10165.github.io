@@ -1,0 +1,66 @@
+---
+import BaseLayout from '../../../../../layouts/BaseLayout.astro';
+import { getPostHistory } from '../../../../../lib/history';
+import { renderArchivedMarkdown } from '../../../../../lib/markdown.mjs';
+import { getPosts, postSlug, postSourcePath, type HistoryVersion, type Post } from '../../../../../lib/site';
+
+interface Props {
+  post: Post;
+  version: HistoryVersion;
+}
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  return posts.flatMap((post) => {
+    const slug = postSlug(post);
+    return getPostHistory(slug).map((version) => ({
+      params: { slug, id: version.id },
+      props: { post, version },
+    }));
+  });
+}
+
+const { post, version } = Astro.props;
+const slug = postSlug(post);
+const archivedHtml = await renderArchivedMarkdown(version.content, postSourcePath(post));
+---
+
+<BaseLayout
+  title={`v${version.id} · ${post.data.title}`}
+  description={version.description || version.title}
+  ogType="article"
+  publishedTime={version.date}
+  article
+>
+  <header class="surface article-header">
+    <p class="eyebrow">
+      Archived version v{version.id} · <time datetime={version.createdAt}>{version.createdAt.slice(0, 10)}</time>
+    </p>
+    <h1>{version.title}</h1>
+    {version.description && <p class="lede">{version.description}</p>}
+    {version.tags.length > 0 && (
+      <div class="tags" aria-label="Tags">
+        {version.tags.map((tag) => <a class="tag" href={`/blog/tags/${tag}/`}>#{tag}</a>)}
+      </div>
+    )}
+  </header>
+
+  <article class="surface article-body" set:html={archivedHtml} />
+
+  <nav class="archive-links" aria-label="Version navigation">
+    <a href={`/blog/${slug}/history/`}>← Back to history</a>
+    <span aria-hidden="true">·</span>
+    <a href={`/blog/${slug}/`}>Current version</a>
+  </nav>
+
+  <style>
+    .archive-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-top: 1rem;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+  </style>
+</BaseLayout>

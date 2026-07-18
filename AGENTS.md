@@ -2,136 +2,153 @@
 
 ## Project Overview
 
-Personal GitHub Pages site (`fun10165.github.io`) — a Vue 3 CDN homepage plus a generated static Markdown blog. The homepage is still a single-page portfolio/archive entry point; blog HTML is generated from Markdown and committed under `blog/` for GitHub Pages.
+Personal GitHub Pages site (`fun10165.github.io`) built with Astro. It combines a static personal homepage, a Markdown blog, generated post-history and comparison pages, and the preserved 2019 homepage under `/classic/`.
+
+Astro renders the site as static HTML into `dist/`; GitHub Actions deploys that directory to GitHub Pages. User-authored posts and history snapshots remain under `content/`.
 
 ## Architecture & Data Flow
 
-```
-index.html (Vue 3 SPA, CDN-loaded)
-  |
-  +-- Vue 3 Options API app (createApp)
-  |     data: timeline, projects, now, blog, yearsOnline, revealEgg
-  |     methods: toggleEgg()
-  |     mount: #app
-  |
-  +-- Inline <style> (CSS custom properties, single responsive grid layout)
-  |
-  +-- Links to ./blog/ (generated static blog index)
-  |
-  +-- Links to classic/index.html (preserved original, plain HTML)
+```text
+content/posts/*.md
+  ├─ Astro Content Collection (`src/content.config.ts`)
+  ├─ Markdown pipeline (`astro.config.mjs`, `src/lib/markdown.mjs`)
+  ├─ static post, tag, series, search, RSS, and sitemap routes
+  └─ snapshot script → content/post-history/<slug>.json
 
-content/posts/*.md (frontmatter + Markdown)
-  |
-  +-- build:blog -> blog/index.html and blog/<slug>/index.html
+src/pages/index.astro
+  └─ static personal homepage with one small client-side egg toggle
+
+src/pages/blog/
+  ├─ index, search, RSS, and blog sitemap
+  ├─ [slug] post, history, archived version, and compare routes
+  ├─ tags/[tag]
+  └─ series/[series]
+
+public/
+  ├─ canonical static assets and preserved `classic/`
+  └─ generated `content/posts/` image copies (ignored by Git)
+
+astro build → dist/ → GitHub Pages
 ```
 
-- **No router** — anchor-based homepage scrolling (`#story`, `#now`, `#projects`, `#legacy`) plus a plain `./blog/` Blog link
-- **No API calls, no state management** beyond Vue `data()`
-- **All content is hardcoded** in the Vue `data()` object (Chinese text)
-- **No components** — single inline template string in `createApp({ template: … })`
+- Astro uses static output with trailing slashes.
+- The homepage and blog share `BaseLayout.astro` and global design tokens.
+- Markdown is rendered through unified with GFM, footnotes, math, sanitization, KaTeX, heading IDs, and local URL rewriting.
+- Blog content is validated by the `posts` Content Collection schema.
+- Interactive JavaScript is limited to search, version comparison, the homepage egg toggle, and Giscus comments.
 
 ## Key Directories
 
 | Path | Purpose |
 |---|---|
-| `index.html` | Main page: Vue 3 app with inline CSS and JS |
-| `avatar.webp` | 1920×1920 avatar image (WebP, 294KB) |
-| `hit-logo.svg` | HIT Shenzhen logo SVG (blue, 122KB) |
-| `classic/index.html` | Preserved original 2019 homepage (plain HTML, no JS) |
-| `content/posts/*.md` | Markdown blog source posts with frontmatter |
-| `blog/` | Generated static blog output served by GitHub Pages |
+| `src/pages/` | Astro file-based routes |
+| `src/layouts/` | Shared document shells and metadata |
+| `src/components/` | Reusable post-list and comments UI |
+| `src/styles/` | Shared design system and homepage-specific CSS |
+| `src/lib/` | Post, history, and Markdown utilities |
+| `content/posts/` | User-authored Markdown posts and source images |
+| `content/post-history/` | Committed immutable post snapshots |
+| `scripts/snapshot-posts.mjs` | Appends or verifies content snapshots |
+| `scripts/sync-content-assets.mjs` | Copies post images into Astro's public tree |
+| `public/` | Static assets copied directly to the built site |
+| `dist/` | Generated deployment output; never commit or edit |
 
-The `banks/` directory contains Mnemopi tooling artifacts and is **not part of the site content**.
+The `banks/` directory contains Mnemopi tooling artifacts and is not part of the site.
 
 ## Development Commands
 
 | Task | Command |
 |---|---|
-| Local preview | `python3 -m http.server 8000` or any static file server from repo root |
-| Build blog | `npm run build:blog` |
-| Check blog output | `npm run check:blog` |
-| Build static generated assets | `npm run build` |
-| Deploy | Run the blog build, commit generated `blog/`, then push to `main`; GitHub Pages serves the root |
+| Install dependencies | `npm ci` |
+| Local development | `npm run dev` |
+| Type/content checks | `npm run check` |
+| Production build | `npm run build` |
+| Preview production output | `npm run preview` |
+| Legacy-compatible build alias | `npm run build:blog` |
+| Full blog check and build | `npm run check:blog` |
 
-### Pre-commit hook
+`npm run build` first appends a history snapshot when a post body has changed, synchronizes post images, and then runs `astro build`. Stage any resulting `content/post-history/*.json` change with the post. `npm run check` is read-only with respect to history and fails when a current snapshot is missing.
 
-A pre-commit hook in `.githooks/pre-commit` validates HTML structure, JS syntax, and Vue template integrity
-on every commit. Configured via `git config core.hooksPath .githooks`. It blocks commits that fail any check.
+GitHub Pages deployment is defined in `.github/workflows/deploy.yml`. It runs `npm ci`, builds the site, and deploys `dist/` through the Pages artifact action.
 
-Run manually: `bash .githooks/pre-commit`
+### Git hooks
 
-### Post-commit hook
+- `.githooks/pre-commit` runs the Astro checks for staged site inputs.
+- `.githooks/post-commit` runs the full Astro check and build after a commit.
+- Run either hook directly with `bash .githooks/pre-commit` or `bash .githooks/post-commit`.
 
-A post-commit hook in `.githooks/post-commit` runs full HTML/JS/Vue validation on all files and `check:blog`
-after each commit. It is non-blocking and skips JS syntax checks on generated compare pages.
+## Content Conventions
 
-Run manually: `bash .githooks/post-commit`
+Add posts as `content/posts/*.md` with frontmatter:
 
-The homepage has no bundler. Vue 3 is loaded from CDN at runtime:
-
-```html
-<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+```yaml
+---
+title: "Required title"
+date: "YYYY-MM-DD"
+description: "Required summary"
+tags:
+  - tag
+slug: optional-stable-slug
+cover: optional-relative-or-absolute-image
+series: optional-series-name
+---
 ```
 
-The blog build is a Node-based static generation workflow only: source Markdown stays in `content/posts/`, generated HTML stays in `blog/`.
+- Keep every public slug stable after publication.
+- Relative post images belong beside the Markdown source, commonly under `content/posts/assets/`.
+- Markdown-to-Markdown links are rewritten to the target post route when the target exists.
+- Raw Markdown HTML is sanitized before rendering.
+- LaTeX-style inline and block math is rendered to static KaTeX HTML.
+- History files are generated data but are committed because they are part of the public version archive.
+- Do not hand-edit generated copies under `public/content/` or anything under `dist/`.
 
-## Code Conventions & Common Patterns
+## Code Conventions
 
-### Vue pattern
-- **Options API** with `data()`, `methods`, `template` (no Composition API, no `<script setup>`)
-- Single `createApp({…}).mount("#app")` call
-- Template uses `v-for`, `v-if`, `:key`, `@click`, `{{ }}` interpolation directly in a template string
-- `yearsOnline` computed once in `data()` via `new Date().getFullYear() - 2019` (not reactive to time)
-- Blog homepage card data lives in the same `data()` object; keep homepage additions in the Options API style
+### Astro and TypeScript
 
-### CSS pattern
-- CSS custom properties in `:root` for theming (`--bg`, `--accent`, `--panel`, etc.)
-- Single breakpoint system: `@media (max-width: 820px)` and `@media (max-width: 640px)`
-- Staggered reveal animations via `.reveal` + `.delay-1` through `.delay-3` classes
-- Fonts loaded from Google Fonts: DM Serif Display (headings), IBM Plex Sans (body)
-- Layout: CSS Grid (`hero`, `sections`) with `min(1120px, calc(...))` centering shell
+- Prefer Astro components for static markup and use client JavaScript only for observable interaction.
+- Keep shared page chrome and metadata in `BaseLayout.astro`.
+- Put reusable data and routing logic in `src/lib/`, not duplicated across page routes.
+- Use Content Collection types (`CollectionEntry<'posts'>`) instead of ad hoc post objects.
+- Throw explicit build errors for invalid content, duplicate slugs, and malformed history records.
+- Preserve the existing URL families and trailing-slash behavior.
 
-### HTML pattern
-- Static `<div id="app">` mount point
-- All content in Chinese (lang="zh-CN")
-- Semantic HTML: `<header>`, `<nav>`, `<main>`, `<section>`, `<article>`, `<aside>`, `<footer>`
+### CSS
 
+- Reuse the custom properties in `src/styles/global.css` for color, spacing, type, borders, and shadows.
+- Put page-specific styles next to that page or in a clearly named stylesheet.
+- Maintain responsive behavior at desktop, tablet, and phone widths.
+- Visual changes must preserve every content block and interaction; verify rendered output rather than source alone.
 
-### Blog workflow
-- Add posts as `content/posts/*.md` with frontmatter: `title`, `date`, `description`, `tags`, and optional `slug`.
-- Optional frontmatter field `cover` (relative or absolute image URL) adds a hero image to post pages and a thumbnail on the blog index.
-- Blog build also injects the three most recent posts into homepage `index.html` between `BLOG_RECENT_POSTS_START` / `BLOG_RECENT_POSTS_END`; do not edit generated entries by hand.
-- Run `npm run build:blog` to regenerate `blog/index.html` and each `blog/<slug>/index.html` page.
-- Run `npm run check:blog` before committing generated blog output when touching posts or the generator.
-- Every build appends a content snapshot to `content/post-history/<slug>.json` when the content hash changes (skipped in `--check` mode).
-- Generated pages: `blog/<slug>/history/index.html` (version list), `blog/<slug>/history/<version-id>/index.html` (archived version), `blog/<slug>/compare/index.html` (client-side line diff between any two versions).
-- Markdown conversion should use a unified/remark/rehype pipeline, not regex conversion: `remark-gfm`, `remark-math`, `rehype-sanitize`, `rehype-katex`, `rehype-slug`, and `rehype-stringify`.
-- Math rendering choice: LaTeX-style inline/block formulae are rendered to static KaTeX HTML; include KaTeX CSS in generated pages.
-- Preserve link and image paths/extensions from Markdown where safe, and sanitize raw Markdown HTML before KaTeX/stringify.
-## Important Files
+### Markdown and history
 
-| File | Role |
+- Keep the unified/remark/rehype pipeline centralized in `astro.config.mjs` and `src/lib/markdown.mjs`.
+- Use the same Markdown behavior for current and archived posts.
+- Snapshot IDs and files are stable public routes; never renumber or rewrite old entries.
+- Escape serialized JSON embedded into HTML before assigning it with `set:html`.
+
+## Important Routes
+
+| Route | Purpose |
 |---|---|
-| `index.html` | Homepage source — contains all homepage HTML, CSS, and JS |
-| `content/posts/*.md` | Blog source posts |
-| `blog/index.html` | Generated blog listing page |
-| `blog/<slug>/index.html` | Generated standalone blog post pages |
-| `avatar.webp` | 1920×1920 avatar, displayed prominently in hero |
-| `hit-logo.svg` | Inline SVG logo for HIT Shenzhen, placed above school name in hero |
-| `classic/index.html` | Historical archive, never modified by design |
-| `README.md` | Minimal project description |
+| `/` | Personal homepage |
+| `/blog/` | Blog index |
+| `/blog/<slug>/` | Current post |
+| `/blog/<slug>/history/` | Version list |
+| `/blog/<slug>/history/<id>/` | Archived version |
+| `/blog/<slug>/compare/` | Client-side line comparison |
+| `/blog/tags/<tag>/` | Tag archive |
+| `/blog/series/<series>/` | Series archive |
+| `/blog/search/` | Client-side title, description, and tag search |
+| `/blog/feed.xml` | RSS feed |
+| `/blog/sitemap.xml` | Blog-compatible sitemap |
+| `/classic/` | Preserved 2019 homepage |
 
-## Runtime/Tooling Preferences
+## Testing and QA
 
-- **Static output** — homepage and generated blog HTML are served directly by GitHub Pages
-- **Homepage runtime** — Vue loaded from CDN; edit `index.html` directly for homepage changes
-- **Blog build** — use the npm scripts for Markdown-to-HTML generation, then commit the generated `blog/` output
-- **No TypeScript on the homepage** — plain JavaScript (ES6+)
-- **No CSS preprocessor** — vanilla CSS with custom properties
-
-## Testing & QA
-
-- **No test framework** — manual visual verification in browser
-- Test changes by opening `index.html` directly or via a local static server
-- Verify: desktop layout (>820px), tablet/mobile layout at the 820px and 640px breakpoints
-- Verify: anchor links scroll, Blog nav and Blog card resolve to `./blog/`, egg toggle works, classic link resolves
+- `npm run check` must report zero Astro diagnostics.
+- `npm run check:blog` must build every static route successfully.
+- When changing routes or generators, compare the complete route inventory before and after.
+- For homepage or visual changes, inspect both desktop and narrow mobile layouts in a real browser.
+- Smoke-test anchor navigation, search matching and empty states, the egg toggle, history navigation, version comparison, Giscus loading, local images, GFM fixtures, tables, task lists, footnotes, and KaTeX.
+- Verify no horizontal overflow, overlap, truncation, missing content, or broken static assets before deployment.

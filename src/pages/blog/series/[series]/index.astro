@@ -1,0 +1,52 @@
+---
+import type { GetStaticPaths } from 'astro';
+
+import PostList from '../../../../components/PostList.astro';
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import { getPosts, type Post } from '../../../../lib/site';
+
+interface Props {
+  series: string;
+  posts: Post[];
+}
+
+export const getStaticPaths = (async () => {
+  const posts = await getPosts();
+  const postsBySeries = new Map<string, Post[]>();
+
+  for (const post of posts) {
+    const series = post.data.series;
+    if (!series) continue;
+
+    const seriesPosts = postsBySeries.get(series);
+    if (seriesPosts) seriesPosts.push(post);
+    else postsBySeries.set(series, [post]);
+  }
+
+  return Array.from(postsBySeries, ([series, seriesPosts]) => ({
+    params: { series },
+    props: {
+      series,
+      posts: seriesPosts.sort(
+        (left, right) =>
+          left.data.date.localeCompare(right.data.date) ||
+          left.data.title.localeCompare(right.data.title, 'zh-CN'),
+      ),
+    },
+  }));
+}) satisfies GetStaticPaths;
+
+const { series, posts } = Astro.props as Props;
+const postCount = `${posts.length} post${posts.length === 1 ? '' : 's'}`;
+---
+
+<BaseLayout title={series} description={`Series: ${series}`}>
+  <header class="page-hero surface">
+    <div>
+      <p class="eyebrow">Series</p>
+      <h1 class="display-title">{series}</h1>
+      <p class="lede">{postCount}</p>
+    </div>
+  </header>
+  <PostList posts={posts} numbered />
+</BaseLayout>

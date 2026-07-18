@@ -1,0 +1,201 @@
+---
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import { getPostHistory } from '../../../../lib/history';
+import { getPosts, postSlug, type Post } from '../../../../lib/site';
+
+interface Props {
+  post: Post;
+  versions: ReturnType<typeof getPostHistory>;
+}
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  return posts.map((post) => {
+    const slug = postSlug(post);
+    return {
+      params: { slug },
+      props: { post, versions: getPostHistory(slug) },
+    };
+  });
+}
+
+const { post, versions } = Astro.props;
+const slug = postSlug(post);
+const jsonScriptEscapes: Record<string, string> = {
+  '<': '\\u003c',
+  '>': '\\u003e',
+  '&': '\\u0026',
+  '\u2028': '\\u2028',
+  '\u2029': '\\u2029',
+};
+const serializedVersions = JSON.stringify(versions).replace(
+  /[<>&\u2028\u2029]/gu,
+  (character) => jsonScriptEscapes[character],
+);
+---
+
+<BaseLayout
+  title={`Compare · ${post.data.title}`}
+  description={`Compare archived versions of ${post.data.title}`}
+  ogType="article"
+  article
+>
+  <section class="surface list-panel compare-panel">
+    <p class="eyebrow">Version comparison</p>
+    <h1>Compare Versions</h1>
+    <p class="lede">{post.data.title}</p>
+    <p class="compare-links">
+      <a href={`/blog/${slug}/history/`}>← Back to history</a>
+      <span aria-hidden="true">·</span>
+      <a href={`/blog/${slug}/`}>Current version</a>
+    </p>
+
+    {versions.length > 0 ? (
+      <>
+        <div class="compare-controls">
+          <label for="compare-from">
+            <span>From</span>
+            <select id="compare-from"></select>
+          </label>
+          <label for="compare-to">
+            <span>To</span>
+            <select id="compare-to"></select>
+          </label>
+          <button class="button" id="compare-button" type="button">Compare</button>
+        </div>
+        <div id="diff-output" aria-live="polite"></div>
+      </>
+    ) : (
+      <div class="empty-state" id="diff-output">
+        No archived versions are available to compare yet.
+      </div>
+    )}
+  </section>
+
+  <script is:inline id="version-data" type="application/json" set:html={serializedVersions}></script>
+
+  <script>
+    interface VersionData {
+      id: string;
+      createdAt: string;
+      content: string;
+    }
+
+    interface DiffOperation {
+      type: 'context' | 'add' | 'delete';
+      line: string;
+    }
+
+    const dataElement = document.querySelector<HTMLScriptElement>('#version-data');
+    const versions: VersionData[] = dataElement?.textContent ? JSON.parse(dataElement.textContent) : [];
+    const fromSelect = document.querySelector<HTMLSelectElement>('#compare-from');
+    const toSelect = document.querySelector<HTMLSelectElement>('#compare-to');
+    const compareButton = document.querySelector<HTMLButtonElement>('#compare-button');
+    const output = document.querySelector<HTMLElement>('#diff-output');
+
+    for (const [index, version] of versions.entries()) {
+      const label = `v${version.id} (${version.createdAt.slice(0, 10)})`;
+      const fromOption = new Option(label, String(index));
+      fromSelect?.add(fromOption);
+      toSelect?.add(fromOption.cloneNode(true) as HTMLOptionElement);
+    }
+    if (toSelect && versions.length >= 2) toSelect.selectedIndex = versions.length - 1;
+
+    function lineDiff(before: string[], after: string[]): DiffOperation[] {
+      const rowCount = before.length;
+      const columnCount = after.length;
+      const lengths = Array.from({ length: rowCount + 1 }, () => new Uint32Array(columnCount + 1));
+
+      for (let row = 1; row <= rowCount; row += 1) {
+        for (let column = 1; column <= columnCount; column += 1) {
+          lengths[row][column] = before[row - 1] === after[column - 1]
+            ? lengths[row - 1][column - 1] + 1
+            : Math.max(lengths[row - 1][column], lengths[row][column - 1]);
+        }
+      }
+
+      let row = rowCount;
+      let column = columnCount;
+      const operations: DiffOperation[] = [];
+      while (row > 0 || column > 0) {
+        if (row > 0 && column > 0 && before[row - 1] === after[column - 1]) {
+          operations.push({ type: 'context', line: before[row - 1] });
+          row -= 1;
+          column -= 1;
+        } else if (column > 0 && (row === 0 || lengths[row][column - 1] >= lengths[row - 1][column])) {
+          operations.push({ type: 'add', line: after[column - 1] });
+          column -= 1;
+        } else {
+          operations.push({ type: 'delete', line: before[row - 1] });
+          row -= 1;
+        }
+      }
+      operations.reverse();
+      return operations;
+    }
+
+    compareButton?.addEventListener('click', () => {
+      if (!fromSelect || !toSelect || !output) return;
+      const before = versions[Number.parseInt(fromSelect.value, 10)];
+      const after = versions[Number.parseInt(toSelect.value, 10)];
+      if (!before || !after) return;
+
+      output.replaceChildren();
+      const heading = document.createElement('h2');
+      heading.textContent = `v${before.id} → v${after.id}`;
+      output.append(heading);
+
+      for (const operation of lineDiff(before.content.split('\n'), after.content.split('\n'))) {
+        const line = document.createElement('div');
+        line.className = `diff-line diff-${operation.type}`;
+        line.textContent = `${operation.type === 'add' ? '+' : operation.type === 'delete' ? '-' : ' '}${operation.line}`;
+        output.append(line);
+      }
+    });
+  </script>
+
+  <style>
+    .compare-panel h1 {
+      margin: 0;
+      font-size: clamp(2.1rem, 5vw, 3.5rem);
+    }
+
+    .compare-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      color: var(--muted);
+    }
+
+    .compare-controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+      gap: 1rem;
+      align-items: end;
+      margin: 1.5rem 0;
+    }
+
+    .compare-controls label {
+      display: grid;
+      gap: 0.35rem;
+      min-width: 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    #diff-output h2 {
+      margin-top: 1.8rem;
+    }
+
+    @media (max-width: 640px) {
+      .compare-controls {
+        grid-template-columns: 1fr;
+      }
+
+      .compare-controls .button {
+        width: 100%;
+      }
+    }
+  </style>
+</BaseLayout>

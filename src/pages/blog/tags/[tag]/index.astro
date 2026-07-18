@@ -1,0 +1,44 @@
+---
+import type { GetStaticPaths } from 'astro';
+
+import PostList from '../../../../components/PostList.astro';
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import { getPosts, type Post } from '../../../../lib/site';
+
+interface Props {
+  tag: string;
+  posts: Post[];
+}
+
+export const getStaticPaths = (async () => {
+  const posts = await getPosts();
+  const postsByTag = new Map<string, Post[]>();
+
+  for (const post of posts) {
+    for (const tag of post.data.tags) {
+      const taggedPosts = postsByTag.get(tag);
+      if (taggedPosts) taggedPosts.push(post);
+      else postsByTag.set(tag, [post]);
+    }
+  }
+
+  return Array.from(postsByTag, ([tag, taggedPosts]) => ({
+    params: { tag },
+    props: { tag, posts: taggedPosts },
+  }));
+}) satisfies GetStaticPaths;
+
+const { tag, posts } = Astro.props as Props;
+const postCount = `${posts.length} post${posts.length === 1 ? '' : 's'}`;
+---
+
+<BaseLayout title={`#${tag}`} description={`Posts tagged #${tag}`}>
+  <header class="page-hero surface">
+    <div>
+      <p class="eyebrow">Tag</p>
+      <h1 class="display-title">#{tag}</h1>
+      <p class="lede">{postCount}</p>
+    </div>
+  </header>
+  <PostList posts={posts} />
+</BaseLayout>

@@ -1,0 +1,71 @@
+---
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import { getPostHistory } from '../../../../lib/history';
+import { getPosts, postSlug, type Post } from '../../../../lib/site';
+
+interface Props {
+  post: Post;
+  versions: ReturnType<typeof getPostHistory>;
+}
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  return posts.map((post) => {
+    const slug = postSlug(post);
+    return {
+      params: { slug },
+      props: { post, versions: getPostHistory(slug) },
+    };
+  });
+}
+
+const { post, versions } = Astro.props;
+const slug = postSlug(post);
+const orderedVersions = versions.toReversed();
+const snapshotLabel = `${versions.length} snapshot${versions.length === 1 ? '' : 's'}`;
+---
+
+<BaseLayout
+  title={`History · ${post.data.title}`}
+  description={`Version history for ${post.data.title}`}
+  ogType="article"
+  article
+>
+  <header class="surface article-header">
+    <p class="eyebrow"><a href={`/blog/${slug}/`}>{post.data.title}</a> · History</p>
+    <h1>Version History</h1>
+    <p class="lede">{snapshotLabel} · <a href={`/blog/${slug}/compare/`}>Compare versions</a></p>
+  </header>
+
+  {orderedVersions.length > 0 ? (
+    <section class="surface list-panel" aria-label="Post versions">
+      <div class="list-rows">
+        {orderedVersions.map((version) => (
+          <a class="list-row" href={`/blog/${slug}/history/${version.id}/`}>
+            <span class="muted">
+              <time datetime={version.createdAt}>{version.createdAt.slice(0, 10)}</time><br />
+              v{version.id}
+            </span>
+            <span>
+              <strong>{version.title}</strong>
+              {version.description && <span class="history-description">{version.description}</span>}
+            </span>
+          </a>
+        ))}
+      </div>
+    </section>
+  ) : (
+    <section class="surface empty-state">
+      <p>No archived versions are available for this post yet.</p>
+      <p><a href={`/blog/${slug}/`}>Return to the current version</a></p>
+    </section>
+  )}
+
+  <style>
+    .history-description {
+      display: block;
+      margin-top: 0.25rem;
+      color: var(--muted);
+    }
+  </style>
+</BaseLayout>
