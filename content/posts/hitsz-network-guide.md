@@ -8,7 +8,7 @@ tags:
   - EZ4Connect
   - Mihomo
   - 新生
-slug: high-performance-hitsz
+slug: hitsz-network-guide
 ---
 
 在 HITSZ，新生入学后很快就会面临两个网络问题：
