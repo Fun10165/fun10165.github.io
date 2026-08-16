@@ -64,10 +64,15 @@ The `banks/` directory contains Mnemopi tooling artifacts and is not part of the
 | Type/content checks | `npm run check` |
 | Production build | `npm run build` |
 | Preview production output | `npm run preview` |
+| Generate share image for a post | `npm run share -- <slug>` |
 | Legacy-compatible build alias | `npm run build:blog` |
 | Full blog check and build | `npm run check:blog` |
 
 `npm run build` first appends a history snapshot when a post body has changed, synchronizes post images, and then runs `astro build`. Stage any resulting `content/post-history/*.json` change with the post. `npm run check` is read-only with respect to history and fails when a current snapshot is missing.
+
+`npm run share -- <slug>` rebuilds the site, renders the post's dedicated share view with a headless Chrome screenshot, and writes `share/<slug>.png`. Generated images are gitignored. The share view itself lives at `/blog/<slug>/share/` and is excluded from sitemaps and search indexing.
+
+
 
 GitHub Pages deployment is defined in `.github/workflows/deploy.yml`. It runs `npm ci`, builds the site, and deploys `dist/` through the Pages artifact action.
 
@@ -137,6 +142,7 @@ series: optional-series-name
 | `/blog/<slug>/history/` | Version list |
 | `/blog/<slug>/history/<id>/` | Archived version |
 | `/blog/<slug>/compare/` | Client-side line comparison |
+| `/blog/<slug>/share/` | Share-image view, excluded from sitemaps and indexing |
 | `/blog/tags/<tag>/` | Tag archive |
 | `/blog/series/<series>/` | Series archive |
 | `/blog/search/` | Client-side title, description, and tag search |

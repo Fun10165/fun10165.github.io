@@ -4,4 +4,5 @@ banks/
 dist/
 .astro/
 public/content/
+share/
 *.bak.*

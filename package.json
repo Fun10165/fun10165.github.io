@@ -10,7 +10,8 @@
     "preview": "astro preview",
     "check": "node scripts/snapshot-posts.mjs --check && npm run assets:sync && astro check",
     "build:blog": "npm run build",
-    "check:blog": "npm run check && astro build"
+    "check:blog": "npm run check && astro build",
+    "share": "node scripts/share-post.mjs"
   },
   "dependencies": {
     "@astrojs/markdown-remark": "^7.2.1",
@@ -35,6 +36,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
+    "puppeteer-core": "^25.7.0",
     "typescript": "^6.0.3"
   }
 }

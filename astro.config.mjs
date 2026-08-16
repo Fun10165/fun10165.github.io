@@ -15,7 +15,7 @@ export default defineConfig({
   site: 'https://fun10165.github.io',
   output: 'static',
   trailingSlash: 'always',
-  integrations: [sitemap()],
+  integrations: [sitemap({ filter: (page) => !page.includes('/share/') })],
   markdown: {
     processor: unified({
       remarkPlugins: [remarkGfm, remarkFootnotes, remarkMath],

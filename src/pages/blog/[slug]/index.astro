@@ -57,8 +57,9 @@ const currentSeriesIndex = seriesPosts.findIndex((candidate) => postSlug(candida
         <time datetime={post.data.date}>{formatPostDate(post.data.date)}</time>
         <span aria-hidden="true">·</span>
         <span>{estimateReadingTime(post.body || '')}</span>
+        <span aria-hidden="true">·</span>
+        <a href={`/blog/${postSlug(post)}/share/`}>Share</a>
       </div>
-      <p class="lede">{post.data.description}</p>
       {post.data.tags.length > 0 && (
         <div class="tags">
           {post.data.tags.map((tag) => <a class="tag" href={`/blog/tags/${tag}/`}>#{tag}</a>)}
