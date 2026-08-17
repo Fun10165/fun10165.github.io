@@ -66,11 +66,15 @@ try {
   const response = await page.goto(`${baseUrl}/blog/${slug}/share/`, { waitUntil: 'networkidle0' });
   if (!response?.ok()) throw new Error(`Share page returned HTTP ${response?.status()}`);
   await page.evaluate(() => document.fonts.ready);
+  const contentHeight = await page.evaluate(() => document.documentElement.offsetHeight);
 
   const outputDirectory = path.join(repoRoot, 'share');
   await fs.mkdir(outputDirectory, { recursive: true });
   const outputPath = path.join(outputDirectory, `${slug}.png`);
-  await page.screenshot({ path: outputPath, fullPage: true });
+  await page.screenshot({
+    path: outputPath,
+    clip: { x: 0, y: 0, width: 760, height: contentHeight },
+  });
   console.log(`Saved ${path.relative(process.cwd(), outputPath)}`);
 } finally {
   await browser?.close();
