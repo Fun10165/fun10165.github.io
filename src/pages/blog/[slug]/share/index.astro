@@ -1,0 +1,168 @@
+---
+import { render } from 'astro:content';
+
+import '../../../../styles/global.css';
+import { formatPostDate, getPosts, postCoverUrl, postSlug, SITE_URL, type Post } from '../../../../lib/site';
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  return posts.map((post) => ({
+    params: { slug: postSlug(post) },
+    props: { post },
+  }));
+}
+
+interface Props {
+  post: Post;
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+const cover = postCoverUrl(post);
+const postUrl = `${SITE_URL}/blog/${postSlug(post)}/`;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=760" />
+    <meta name="robots" content="noindex" />
+    <title>{post.data.title} · Fun10165</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.47/dist/katex.min.css" />
+  </head>
+  <body>
+    <div class="share-canvas">
+      <header class="share-header">
+        <div class="share-brand">
+          <span class="share-brand-mark" aria-hidden="true">F</span>
+          <span>Fun10165</span>
+        </div>
+        <h1>{post.data.title}</h1>
+        <div class="share-meta">
+          <time datetime={post.data.date}>{formatPostDate(post.data.date)}</time>
+          {post.data.tags.length > 0 && (
+            <span class="share-tags">
+              {post.data.tags.map((tag) => <span class="share-tag">#{tag}</span>)}
+            </span>
+          )}
+        </div>
+      </header>
+
+      <main class="share-body article-body">
+        {cover && <img class="article-cover" src={cover} alt="" />}
+        <Content />
+      </main>
+
+      <footer class="share-footer">
+        <div class="share-footer-url">{postUrl}</div>
+        <div class="share-footer-note">fun10165.github.io</div>
+      </footer>
+    </div>
+  </body>
+</html>
+
+<style>
+  html body {
+    margin: 0;
+    min-height: 0;
+    background: var(--canvas);
+    background-image: none;
+  }
+
+  .share-canvas {
+    width: 760px;
+  }
+
+  .share-header {
+    padding: 52px 48px 60px;
+    color: #fff9ee;
+    background-image:
+      linear-gradient(165deg, rgba(46, 62, 79, 0.42), rgba(46, 62, 79, 0.86)),
+      url('/bg-landscape.webp');
+    background-position: center;
+    background-size: cover;
+  }
+
+  .share-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .share-brand-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    color: #fff9ed;
+    background: var(--accent);
+    font-family: var(--serif);
+    font-size: 17px;
+  }
+
+  .share-header h1 {
+    margin: 26px 0 20px;
+    font-family: var(--serif);
+    font-size: 46px;
+    line-height: 1.18;
+    text-wrap: balance;
+  }
+
+  .share-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.7rem 1rem;
+    color: rgba(255, 249, 238, 0.82);
+    font-size: 15px;
+  }
+
+  .share-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+
+  .share-tag {
+    padding: 0.18em 0.6em;
+    border: 1px solid rgba(255, 249, 238, 0.34);
+    border-radius: 999px;
+    color: #fff9ee;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  main.share-body.article-body {
+    padding: 48px;
+    background: var(--paper-strong);
+  }
+
+  .share-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 22px 48px;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    color: rgba(255, 249, 238, 0.78);
+    background: var(--navy);
+    font-size: 13px;
+  }
+
+  .share-footer-url {
+    overflow-wrap: anywhere;
+  }
+
+  .share-footer-note {
+    flex-shrink: 0;
+  }
+</style>
