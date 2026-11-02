@@ -242,7 +242,7 @@ Harness 负责管理 DOM 式上下文状态树、组装提示词、拦截并解�
 3. **上下文水位与资源燃烧率（Context Pressure & Burn Rate）**：
    实时暴露当前 Context Window 的占用百分比、触发上下文压缩（Compaction）的次数、Prompt Cache 命中率及 Token 消耗速率。这是控制层决定“是否需要将该原子任务拆解为更细粒度的 Subagent”的核心依据。
 4. **语义进展信号（Semantic Progress Signals）**：
-   结合底层 Infrastructure 的客观反馈（如 Git Diff 行数、编译通过率、测试用例红绿灯变化），量化输出当前原子 Agent 是否在真实推进 SSOT 的演进，为控制面的语义巡检探针（Watchdog）提供直接的判定依据。
+   结合底层 Infrastructure 的客观反馈（如 Git Diff 行数、编译通过率、测试用例红绿灯变化），量化输出当前原子 Agent 是否在真实推进 SSOT 的演进，为控制面的巡检探针（Watchdog）提供直接的判定依据。
 
 ### 5. Agent Swarm：介于控制面与原子 Agent 之间的“服务网格（Service Mesh）”
 
