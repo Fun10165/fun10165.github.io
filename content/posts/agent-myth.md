@@ -9,7 +9,6 @@ tags:
   - 架构
 slug: agent-myth
 ---
-
 ## 简述
 
 当下关于 Agent 的最大迷思，在于试图用两种极端的判断——要么迷信「`LLM + Bash + Agent Loop can do everything`」，要么陷入「需要给每一个业务场景专门定制一个庞大的 All-in-one Agent」——去解决本质上属于分布式系统工程的问题。
@@ -50,7 +49,7 @@ slug: agent-myth
 - **判断 4（架构路线之争：All-in-one Agent vs. 抽象分层，分层胜出）**：
   如果认为抽象分层毫无必要，不妨尝试抛弃所有中间抽象去手写一个承接复杂业务的 All-in-one 单体 Agent。软件工程中所有的抽象层，皆源于“人类认知负荷的拆解”与“工程实践上的解耦需求”。在 Agent 系统中，底层的“Provider 协议兼容、模型重试降级、局部工具执行”，与上层的“多 Agent 协同编排、人类交互 Channel 路由、全局状态推进”，在演进速率与故障域上完全属于两个维度的事物。将二者强行耦合在同一个单体 Loop 中，必然导致状态爆炸与抽象泄露。
 
-因此，正如传统软件从单体应用走向云原生微服务一样，当 Agent 系统的复杂度超越临界点，**解耦出专注局部确定性执行的「原子 Agent」，与专注全局编排治理的「控制面」，是唯一的工程出路。**
+因此，正如传统软件从单体应用走向云原生微服务一样，当 Agent 系统的复杂度超越临界点，**解耦出专注局部确定性执行的「原子 Agent」，与专注业务域内编排治理的「控制面」，是唯一的工程出路。**
 
 ---
 
@@ -63,12 +62,12 @@ slug: agent-myth
 | 本文概念 | 对应的云原生 / 系统概念 | 架构职责 | 与传统云原生的关键差异点（Agent Native 特性） |
 | :--- | :--- | :--- | :--- |
 | **All-in-one Agent** | **单体应用 (Monolith)** | 将多 Agent 系统、路由、多步规划、工具调用、多 Provider、各种 Fallback 与状态管理耦合在单一循环中。 | 传统单体只是代码维护难；Agent 单体除了状态多、代码维护难度大以外，还会因上下文增长触发 **混沌效应指数级放大**，直接导致任务在长链路中不可控崩溃，同时人类心智也极难维护这种程序。 |
-| **原子 Agent** | **Pod / 无状态容器** | 最小调度与执行单元。遵循单一职责，最大化单次任务性能与正确率。 | 封装的不仅是进程，还包含对局部上下文窗口（Context Window）的隔离，且其粒度必须与模型 **后训练（Post-training）** 的轨迹分布对齐。 |
+| **原子 Agent** | **Pod / 无状态容器** | 最小调度与执行单元。遵循单一职责，最大化单次任务性能与正确率。 | 封装的不仅是进程，还包含对局部上下文窗口（Context Window）的隔离，且其任务粒度与当前工业界主流模型的 **后训练（Post-training）** 轨迹分布高度对齐。 |
 | **LLM 服务** | **CPU / 算术逻辑单元** | 核心推理计算组件，根据输入约束输出近似解文本。 | 传统 CPU 指令 100% 确定；LLM 是带有语料偏见的概率采样器，单步输出天然存在违反约束的风险。 |
-| **Harness** | **容器运行时 (CRI) + Sidecar 边车** | 原子 Agent 内部的确定性外壳（如 `omp`），负责状态树管理、工具挂载、白盒遥测暴露与局部容错。 | 除了处理网络重试与 Model Fallback（防止抽象泄露），还需像“游戏引擎”一样管理上下文生命周期、格式校验与局部状态回滚（Rewind）。 |
+| **Harness** | **容器运行时 (CRI) + Sidecar 边车** | 原子 Agent 内部的确定性外壳（如 `omp` / `omp²`），负责 DOM 式状态树管理、工具挂载、白盒遥测暴露与局部容错。 | 除了处理网络重试与 Model Fallback（防止抽象泄露），还需作为“单机/单会话内的微控制面（Harness-internal Control Plane）”管理上下文生命周期、格式校验与基于 Patch 流的局部状态回滚（Rewind）。 |
 | **现有 Infrastructure** | **宿主机内核 / 物理底座 / 外部服务** | Agent 赖以感知和改造的客观世界（网络、目标硬件、编译器、API、人类用的办公软件、GitHub、真实物理世界等）。**工具（Tools）即世界暴露的 Syscall，Harness 通过捕获模型输出，在 Infrastructure 上产生副作用即为工具调用。** | 在 Agent 体系中，Infrastructure 不仅提供资源，更承担 **“客观事实锚点（Grounding）”** 的作用——用真实世界的确定性反馈去修剪 LLM 的幻觉。 |
-| **SSOT (单一事实来源)** | **etcd / 分布式持久卷 (PV)** | 全局唯一可信的状态存储（如 Git 树、数据库）。 | 必须严格区分“世界真实状态（World State）”与“LLM 会话记忆（Transcript）”。严禁将多 Agent 的口头上下文当作 SSOT。且 **Truths 之间存在可信度与持久性分级**。 |
-| **控制层 (控制面)** | **Control Plane (如 K8s Master / GitOps + Operator)** | 负责全生命周期契约执行、任务编排、权限拦截，连接人类、传统程序与原子 Agent。在远期演进中可细分为 **最外层 Solid 程序化底座** 与 **中间可变自演化控制层**。 | 调度的对象具有高延时与非确定性；不仅要保护系统最稀缺的资源——**“人类的注意力（Human Attention）”**，还能针对前置、不变式与后置契约实施语义级治理。 |
+| **SSOT (单一事实来源)** | **etcd / 分布式持久卷 (PV)** | 有界业务域（Domain）内唯一可信的状态存储（如 Git 树、单写者 SQLite 数据库）。 | 必须严格区分“世界真实状态（World State）”与“LLM 会话记忆（Transcript）”。严禁将多 Agent 的口头上下文当作 SSOT。且 **Truths 之间存在分级（产物 Truth 与过程性 Truth）**。 |
+| **控制层 (Domain 控制面)** | **Control Plane (如 K8s Master / GitOps + Operator)** | 负责单个有界业务域（Bounded Domain）内的全生命周期契约执行、任务编排、权限拦截，连接人类、传统程序与原子 Agent。在远期演进中可细分为 **最外层 Solid 程序化底座（Lifeboat）** 与 **中间可变自演化控制层**。 | 调度的对象具有高延时与非确定性；不仅要保护系统最稀缺的资源——**“人类的注意力（Human Attention）”**，还能针对前置、不变式与后置契约实施语义级治理（跨 Domain 则通过联邦边界协议交互，而非全局大一统控制面）。 |
 | **Agent Swarm** | **Service Mesh (服务网格) / 子图 Operator** | 介于控制面与原子 Agent 之间，对局部高密度 LLM 协作区进行通信治理与质量把控。 | Agent 之间传递信息极易产生“传话筒误差累积”，需重点设计局部 SSOT 交互机制，引入局部共识、交叉验证与熔断机制。 |
 
 ---
@@ -81,7 +80,7 @@ slug: agent-myth
 
 根据前文的判断 3，LLM 在处理长链路、多目标的复合任务时，自迭代的随机性与混沌效应会急剧放大。因此，原子 Agent 的划分遵循 UNIX 哲学：**只做一件事（或为了上下文内聚而极方便放在一起做的一类事）**。
 
-此外，封装为原子 Agent 还有一层关键的算法工程考量：**适应模型的后训练（Post-training）环境**。当前主流模型的 RL 与 SFT 后训练，本质上都是在单任务、有界环境反馈的轨迹（Trajectory）上进行的。超越原子 Agent 边界的超长跨度或多智能体联合后训练，既存在算力与环境搭建开销过大的问题，也面临信用分配（Credit Assignment）等训练技术瓶颈，目前并未被模型训练工业界真实采纳。因此，将执行单元收敛在“原子 Agent”粒度，是工程架构向模型真实能力分布对齐的必然结果。
+此外，封装为原子 Agent 还有一层重要的算法工程考量：**顺应主流模型的后训练（Post-training）范式**。尽管学术界已开始探索多智能体联合强化学习（Multi-Agent RL），但截至当下（2026 年 11 月），工业界主力基座模型的 RL 与 SFT 后训练，主流仍集中在单 Agent、有界环境反馈的轨迹（Trajectory）上。跨越超长周期或复杂多智能体拓扑的端到端联合后训练，仍面临环境搭建开销巨大与信用分配（Credit Assignment）困难等工程挑战。因此，将基本执行单元收敛在“原子 Agent”粒度，能够最充分地吃透现有模型后训练的红利。
 
 ### 2. 内部解剖：`原子 Agent = Harness + LLM 服务 + 现有 Infrastructure`
 
@@ -99,7 +98,7 @@ slug: agent-myth
 对于控制层而言，依赖基础设施尚属老生常谈；但对于原子 Agent 而言，开发者往往陷入“写好 Prompt 和 Tool Schema 就万事大吉”的幻觉。事实上，**环境就绪度（Environment Readiness）是原子 Agent 能够成立的物理前提**，世界底座的确定性反馈（如编译器报错、测试通过、硬件真实耗时）也是压制 LLM 不稳定性的唯一锚点。
 
 #### （2）Infrastructure 中的核心难题：SSOT（Single Source of Truth）
-在原子 Agent 与底座交互的设计中，**Sources of Truth（事实来源）** 是最关键的问题。SSOT（单一事实来源）是分布式系统中久经考验的设计原则。受限于当前 LLM 有限的上下文窗口，以及多原子 Agent 之间高昂的通信成本，一旦系统中的 Sources of Truth 过多，状态极易陷入紊乱。为此，必须确立以下设计准则与演进方向：
+在原子 Agent 与底座交互的设计中，**Sources of Truth（事实来源）** 是最关键的问题。SSOT（单一事实来源）是分布式系统中久经考验的设计原则。受限于当前 LLM 有限的上下文窗口，以及多原子 Agent 之间高昂的通信成本，一旦系统中的 Sources of Truth 过多，状态极易陷入紊乱。为此，在当前业务域（Domain）内必须确立以下设计准则：
 - **世界状态与会话上下文分离（Truths 的分级）**：Sources of Truth 之间存在明确的层级。底层客观 Infrastructure 的状态（如 Git 仓库的 Commit 树、文件系统的真实文件、结构化数据库）是一级 Truth（Hard SSOT）；而 LLM 的上下文窗口（Session Transcript）只是对客观世界的一次局部、临时的只读投影（Cache），绝不能作为全局 SSOT。
 - **给足信息，但按需挂载**：每次拉起原子 Agent 时，只从 SSOT 中提取当前任务所需的最小完备上下文切片注入其中，避免无关历史噪声污染推理轨迹。
 - **通过确定性变更回写 SSOT**：原子 Agent 完成任务后，不应通过自然语言口口相传去同步状态，而应通过确定性的补丁（如 Git Commit、文件落盘、Schema 校验后的写库操作）将变更原子化地提交回 SSOT。
@@ -107,15 +106,15 @@ slug: agent-myth
 - **长期记忆与链式自动召回的审慎演进**：诸如 `dsh-superagent-prototype` 等实践探索了跨会话的长期记忆与链式自动召回机制，但这在当前阶段仍容易引入过期的脏上下文或隐式状态冲突，尚非成熟的终极最佳实践，仍有待后续的工程迭代与验证。
 
 #### （3）Harness：吞掉局部不确定性的运行时外壳
-原子 Agent 的工程设计本身具有极高的内禀复杂度（具体工程细节可参考 [The Harness Playbook](https://stencil.so/blog/harness-playbook) 中属于原子 Agent 的部分）。如果说 LLM 服务是计算内核，Infrastructure 是物理世界，那么 **Harness 就是介于二者之间的容器运行时与游戏引擎**。
-Harness 负责管理上下文状态树、组装提示词、拦截并解析工具调用、维护局部重试循环，将非确定性的 LLM 与挑剔的外部 Infrastructure 粘合为一个对外表现稳定的整体。
+原子 Agent 的工程设计本身具有极高的内禀复杂度（具体工程细节可参考 [The Harness Playbook](https://stencil.so/blog/harness-playbook) 中属于单机运行时/原子 Agent 的部分）。如果说 LLM 服务是计算内核，Infrastructure 是物理世界，那么 **Harness 就是介于二者之间的容器运行时与游戏引擎**。
+Harness 负责管理 DOM 式上下文状态树、组装提示词、拦截并解析工具调用、维护局部重试循环，将非确定性的 LLM 与挑剔的外部 Infrastructure 粘合为一个对外表现稳定的整体。
 
 ### 3. 契约设计（Design by Contract）与防抽象泄露
 
 封装为原子 Agent，核心在于把<strong>契约（Contract）</strong>做好。按照契约式设计的范式，原子 Agent 的契约包含三个部分：
 
 - **前置条件（Preconditions）**：启动该原子 Agent 所需的输入约束格式完备性，以及底层 Infrastructure 的环境就绪状态（网络、权限、硬件、依赖文件已挂载）。
-  > *架构边界注记*：原子 Agent 的职责是**直接实现输入的约束**。至于“检验输入约束是否符合上层业务契约的前置条件”（例如：输入是否存在安全注入风险、任务目标是否与 Maintainer 的真实意图相符），**绝不应由每一个原子 Agent 各自承担**，而应上移交由控制层中的确定性程序，或专门负责审查的守门原子 Agent（Admission Controller）统一完成。
+  > *架构边界注记*：原子 Agent 的职责是**直接实现输入的约束**。至于“检验输入约束是否符合上层业务契约的前置条件”（例如：外部输入是否存在安全风险、任务目标是否与 Maintainer 的真实意图相符），**绝不应由每一个原子 Agent 各自承担**，而应上移交由控制层中的确定性程序，或专门负责审查的守门原子 Agent（Admission Controller）统一完成。
 - **后置条件（Postconditions）**：原子 Agent 退出时必须兑现的交付物标准。不同设计中具体格式或许不同，但最底线的契约是：**只要输入了符合前置条件的 Prompt 与约束，最终必须完成任务并给出确定性状态的产出（成功交付产物，或返回明确的、结构化的失败原因）。**
 - **不变式（Invariants）**：在原子 Agent 运行生命周期内恒定不可违背的边界约束（如：绝不越权修改工作区沙箱之外的系统文件、资源与 Token 消耗不超过硬上限、局部状态树始终可回滚）。
 
@@ -131,7 +130,7 @@ Harness 负责管理上下文状态树、组装提示词、拦截并解析工具
 2. **能程序化的就程序化**：在 Harness 内部，凡是能用确定性代码（正则、AST 解析、静态检查、脚本）解决的步骤，绝不消耗 LLM 的推理轮次；
 3. **给足信息**：在单次调用的上下文预算内，提供完成该原子任务所需的完备背景与工具反馈，拒绝让模型靠猜测行动。
 
-在这方面，良好封装的典型代表是 **`omp`（oh-my-pi）**。
+在这方面，良好封装的典型代表是 **`omp`（oh-my-pi 及其演进架构 `omp²`）**。
 
 一个封装良好的原子 Agent，应当在架构上实现以下<strong>“九大中立”与可观测特性</strong>（这些“中立性”本质上就是高内聚、低耦合抽象在工程上的外在表现）：
 - **调用和运行方式中立**：无论通过 CLI、SDK、RPC 还是后台守护进程拉起，内核行为一致；
@@ -142,53 +141,55 @@ Harness 负责管理上下文状态树、组装提示词、拦截并解析工具
 - **Profile 中立及配置高度自定义化**：系统提示词、工具集、Rules、角色设定、权限策略与运行参数完全外置可配（其中，权限策略应以底层程序化硬拦截为主、Harness 层显式提醒为辅——将权限边界约束主动暴露给 LLM，可以有效剪枝 LLM 的无效搜索空间，避免其在必然被拒的操作上空耗轮次）；
 - **宿主中立**：可在本地物理机、Docker 容器、云端沙箱等任意具备基础 Infra 的宿主环境中迁移运行；
 - **界面中立**：核心引擎与 TUI、Web UI、IDE 插件或 IM 机器人界面彻底分离；
-- **可观测性、可重放状态及持久化**：完整的轨迹树（Trajectory Tree）透明可追踪，支持任意节点的 Checkpoint 持久化与时间旅行式重放（Replay & Rewind）。
+- **可观测性、可重放状态及持久化**：完整的 DOM 式状态树（State & Trajectory Tree）透明可追踪，所有状态变更经由 Journal 与 Patch 流持久化，支持任意节点的 Checkpoint 恢复、分支（Fork）与时间旅行式重放（Replay & Rewind）。
 
 ### 5. 原子 Agent 的边界
 
 总结而言，原子 Agent 的架构边界，严格收敛在 **“单智能体如何通过 Harness 在局部世界 Infrastructure 上高效、可靠地兑现单次任务契约”**。这对应了 [Agent World](https://clouder0.com/zh-hans/posts/agent-world/)、[Agent World Principles](https://clouder0.com/zh-hans/posts/agent-world-principles/) 以及 [The Harness Playbook](https://stencil.so/blog/harness-playbook) 中关于单 Agent 运行时与局部环境交互的范畴。
 
-至于“控制面与外部宏观世界的边界”、“多 Agent 之间的协同拓扑”以及“人类注意力的分配路由”，则不属于原子 Agent 的职责范畴，它们将被严格交由上一层的<strong>控制层（Control Plane）</strong>来处理。
+至于“业务域控制面与外部世界的边界”、“多 Agent 之间的协同拓扑”以及“人类注意力的分配路由”，则不属于原子 Agent 的职责范畴，它们将被严格交由上一层的<strong>控制层（Control Plane）</strong>来处理。
 
 ---
 
-## 控制层（Control Plane）与 Agent Swarm
+## 控制层（Domain Control Plane）与 Agent Swarm
 
-### 1. 目的、封装来源与“云原生思维切换”
+### 1. 目的、作用域边界与“云原生思维切换”
 
-**控制层（控制面）** 的「目的」与「封装来源」，是基于“原子 Agent”这一已封装完备的底层算子，探讨**如何编排、治理并控制原子 Agent 集群以交付复杂的端到端业务**。它是连接人类（Maintainer/User）、传统确定性程序与原子 Agent 之间的中枢。
+**控制层（控制面）** 的「目的」与「封装来源」，是基于“原子 Agent”这一已封装完备的底层算子，探讨**在一个有界业务域（Bounded Domain，如个人工作台、单一代码仓库或团队内部集群）内，如何编排、治理并控制原子 Agent 集群以交付复杂的端到端业务**。它是连接人类（Maintainer/User）、传统确定性程序与原子 Agent 之间的中枢。
 
-对于熟悉云原生的工程师而言，切换到 Agent 控制层的设计极其自然，因为二者的拓扑结构高度同构；但在动手打造新一代 Agent 控制工具前，必须完成一次关键的**思维切换**：
+> *作用域边界声明*：正如《Agent World Principles》所警示的，试图构建一个管辖全世界所有 Agent 的“全球中央控制面与全局共享 Heap”，只会把单体耦合灾难放大到世界尺度。本文所定义的控制层与 SSOT，严格对应云原生中的 **单个 Kubernetes 集群 / 单个业务域（Domain-local Authority）**；至于跨团队、跨组织的不同 Domain 之间，则不设中央调度器，而是遵循联邦机制，通过显式的边界导入/导出协议（Export/Import Contracts）进行交互。
+
+对于熟悉云原生的工程师而言，切换到 Domain 内 Agent 控制层的设计极其自然，因为二者的拓扑结构高度同构；但在动手打造新一代 Agent 控制工具前，必须完成一次关键的**思维切换**：
 
 - **传统云原生控制面（如 Kubernetes）**：调度的底层单元是**确定性的图灵机程序**。只要镜像不变、配置不变，容器的行为就是 100% 可预期的；控制面对抗的主要变数是“物理基础设施的故障（节点宕机、网络分区）”。
-- **Agent 控制面**：调度的底层单元是**内含 LLM 的原子 Agent**。即便 Harness 已经屏蔽了网络抖动与 Provider 降级等物理故障，原子 Agent 的业务产出依然具有**语义层面的非确定性（近似解偏移、局部逻辑死胡同）**。
+- **Agent 控制面**：调度的底层单元是**内含 LLM 的原子 Agent**。即便 Harness 已经屏蔽了网络抖动与 Provider 降级等物理故障，原子 Agent 的业务产出依然具有**语义层面的非确定性（近似解偏移、局部逻辑死胡同、甚至走捷径“悄悄重新定义成功”）**。
 
 这意味着：**在传统控制架构之外，Agent 控制面面临的最大变数，直接来自于 Agent 自身的不稳定性**。我们的工程目标，就是尽量 **直接复用云原生已验证十余年的最佳实践模式**，针对“语义非确定性”做最小必要的改造，从而快速打造出一系列标准化的 Agent 控制工具，精准解决前文提到的各类 Agent 痛点。
 
 ### 2. 复用云原生最佳实践：构建新一代 Agent 控制机制与工具链
 
-我们完全不需要从零发明轮子。围绕前文提出的<strong>契约式编程（前置条件、不变式、后置条件）</strong>以及分布式状态调度需求，将云原生的核心组件映射过来，就能直接定义出 Agent 控制层亟需的四大核心控制机制（其工程原型可参考 [dsh-superagent-prototype](https://github.com/deepseek-ai/dsh-superagent-prototype) 等前沿实践）：
+我们完全不需要从零发明轮子。围绕前文提出的<strong>契约式编程（前置条件、不变式、后置条件）</strong>以及分布式状态调度需求，将云原生的核心组件映射过来，就能直接定义出 Agent 控制层亟需的四大核心控制机制（其部分工程实现与演进思考可参考 [dsh-superagent-prototype](https://github.com/deepseek-ai/dsh-superagent-prototype) 源码及其配套设计文档《Exploring Super-agent Design》）：
 
 #### （1）全生命周期契约控制器（Contract Enforcement Pipeline）—— 在控制层完整兑现“前置、不变式与后置契约”
 前文在原子 Agent 契约中指出，业务安全校验等不应下放给每个原子 Agent 重复承担。但如果仅在系统最外层放一个孤立的入口节点，又不足以覆盖内部多步调度的契约保障。因此，控制层应当借鉴 Kubernetes 的 **Admission Webhook（准入控制）、Runtime Sandbox（运行时约束）与 Gatekeeper（门禁验收）**，将契约控制设计为贯穿每一次原子 Agent 调用前、中、后的**通用拦截管线（Interceptor Pipeline）**：
 
 - **前置条件控制（Pre-Execution Admission & Injection）**：
   复用 K8s 中 `ValidatingAdmissionWebhook` 与 `MutatingAdmissionWebhook` 的管道模式，在控制面入口及每次拉起原子 Agent 前生效：
-  - **Validating（校验）**：由确定性安全规则配合极轻量的“守门原子 Agent”，拦截 Prompt 注入、越权操作请求，或过滤掉违背 Maintainer 规范（如 `Observe Mode` 静默观察规则）的无效触发；
-  - **Mutating（注入与环境就绪）**：校验目标 Infrastructure 依赖是否就绪（类比 `Init Containers`），自动从全局 SSOT 中按需裁剪挂载最小完备上下文切片与环境凭证，将上游模糊需求转化为符合下游原子 Agent 前置契约的标准化任务载荷（Spec）。
-- **不变式控制（In-Flight Sandbox & Resource Quota）**：
-  在原子 Agent 运行期间，控制层通过底层容器沙箱、文件系统只读/读写路径挂载（Volume Mounts）、网络白名单（NetworkPolicy）以及硬性的 Token/时间配额（ResourceQuota），从物理和程序层面锁死执行边界，确保“不越权、不超支、不污染外部环境”的不变式在运行全周期内恒定成立（至于运行中的“语义进展不变式”，则交由下文的探针机制动态守护）。
+  - **Validating（校验）**：由确定性安全规则配合极轻量的“守门原子 Agent”，拦截越权操作请求，或过滤掉违背 Maintainer 仓库规范（例如 `dsh-superagent-prototype` 非 auto 模式下仅将推断请求记录为 `"would accept"` 而非贸然执行的静默观察策略）的无效触发；
+  - **Mutating（注入与环境就绪）**：校验目标 Infrastructure 依赖是否就绪（类比 `Init Containers`），自动从 Domain SSOT 中按需裁剪挂载最小完备上下文切片与环境凭证，将上游模糊需求转化为符合下游原子 Agent 前置契约的标准化任务载荷（Spec）。
+- **不变式控制（In-Flight Sandbox & Hard Isolation）**：
+  在原子 Agent 运行期间，控制层通过底层进程/容器/MicroVM 沙箱、文件系统只读/读写路径挂载（Volume Mounts）、网络白名单（NetworkPolicy）以及硬性的 Token/时间配额（ResourceQuota），从物理和程序层面锁死执行边界，确保“不越权、不超支、不污染外部环境”的不变式在运行全周期内恒定成立（至于运行中的“语义进展不变式”，则交由下文的探针机制动态守护）。
 - **后置条件控制（Post-Execution Acceptance Gatekeeper）**：
-  原子 Agent 自身退出并声称“任务完成”，绝不代表业务后置契约已经兑现（模型极易产生“虚假报喜”或遗漏隐性约束）。因此，在允许原子 Agent 的产物合并回全局 SSOT 之前，控制层必须设置**提交门禁（Pre-Commit Gatekeeper）**：
-  - **程序化硬验收**：自动触发外部测试套件、编译器、Linter 或结构化 Schema 校验器；
-  - **语义级交叉验收**：对于难以完全用代码形式化验证的交付物，由控制层拉起独立的、挂载只读审查 Profile 的 Reviewer 原子 Agent 进行交叉核验。唯有通过后置验收，变更才被允许正式 Commit 进全局 SSOT；否则直接打回重做或废弃沙箱分支。
+  正如《The Harness Playbook》所观察到的，2026 年的前沿模型即便强到能挖掘系统级漏洞，依然会在遇到阻碍时“走捷径并悄悄重新定义成功（Reward Hacking）”。因此，原子 Agent 自身退出并声称“任务完成”，绝不代表业务后置契约已经兑现。在允许原子 Agent 的产物合并回 Domain SSOT 之前，控制层必须设置**提交门禁（Pre-Commit Gatekeeper）**：
+  - **确定性程序化硬验收（最高优先级）**：强制触发外部测试套件、编译器、Linter 或结构化 Schema 校验器，用客观世界的确定性规则充当不可绕过的裁判；
+  - **异构 Reviewer 交叉验收（辅助语义把关）**：对于难以完全用代码形式化验证的交付物，由控制层拉起独立的、挂载只读审查 Profile 的 Reviewer 原子 Agent 进行交叉核验（需注意生成者与审查者若同源则存在错误相关性，故必须辅以异构模型或确定性检查脚本）。唯有通过后置验收，变更才被允许正式提交进 SSOT；否则直接打回重做或废弃沙箱分支。
 
 #### （2）调谐控制器（Reconciliation Controller）—— 解决“长链路任务失控与状态紊乱”痛点
 - **复用云原生实践**：云原生控制器的灵魂是基于声明式 API 的**调谐循环（Reconciliation Loop）**：$\text{Observe (观察真实状态)} \rightarrow \text{Diff (对比期望状态)} \rightarrow \text{Act (驱使执行单元变更)}$。
-- **Agent 控制工具形态**：放弃用一段超长 Prompt 让单个 Agent 自己规划几十步的做法，改为构建基于 **DAG（有向无环图）或状态机的调谐器（Agent Operator）**。
-  - 控制面永远以 **SSOT（如 Git 仓库状态、测试套件结果、任务看板）** 作为唯一的观察基准（Observe）；
+- **Agent 控制工具形态**：放弃用一段超长 Prompt 让单个 Agent 自己规划几十步的做法，改为构建基于动态工作流或状态机的**调谐器（Agent Operator）**（注：正如《Agent World》所言，固定工作流可视为“过去成功经验编译出的缓存”，用于加速高频确定性路径，而非常规探索的死板轨道）。
+  - 控制面永远以 **Domain SSOT（如 Git 仓库状态、单写者 SQLite 中的 Ticket 状态、测试套件结果）** 作为唯一的观察基准（Observe）；
   - 计算当前产物与业务目标的差距（Diff），随后仅将下一步增量任务分发给对应的无状态原子 Agent（Act）；
-  - 原子 Agent 执行完毕并经由后置门禁修改 SSOT 后立即销毁，控制面开启下一轮观察。这种“程序化调谐 + 原子化执行”的机制，将长链路的累积误差在每一轮调谐中清零。
+  - 原子 Agent 执行完毕并经由后置门禁将产物 Truth 与过程性 Truth 写回 SSOT 后立即销毁，控制面开启下一轮观察。这种“程序化调谐 + 原子化执行”的机制，将长链路的累积误差在每一轮调谐中清零。
 
 #### （3）存活性与语义进展探针（Liveness & Progress Probes）—— 守护运行期“有效推进不变式”，解决“死循环与无效消耗”痛点
 - **复用云原生实践**：Kubelet 通过 `livenessProbe` 检测容器是否死锁，通过 `Startup/ReadinessProbe` 检测服务是否真正可用。
@@ -199,13 +200,13 @@ Harness 负责管理上下文状态树、组装提示词、拦截并解析工具
 
 #### （4）薄路由与重工作节点分离（Thin Router, Heavy Workers）—— 解决“资源耦合与并发踩踏”痛点
 - **复用云原生实践**：网关层（Ingress/Router）只做极速的流量解析与分发，绝不跑重型计算；计算节点（Worker Nodes）拥有独立的资源配额与隔离的文件系统卷（Volume）。
-- **Agent 控制工具形态**：控制面的主路由组件（Router）应当极度轻量化，甚至无需挂载 Shell 或代码修改工具，仅负责监听外部事件流、管理会话生命周期与维护路由表：
-  - 当接收到全新任务信息需要分发时，动态拉起拥有<strong>独立工作目录（如独立 Git Worktree 或容器沙箱）</strong>的原子 Worker Agent；
-  - 当接收到的外部信息与正在执行的某项任务存在语义重合时，Router 无需重启或打断 Worker，而是直接通过**更新对应的 SSOT（如追加 Thread 记录）**，让订阅了该 SSOT 的 Worker Agent 自动感知并吸收增量信息。计算、状态与宿主环境的彻底解耦，让成百上千个原子 Agent 的并发横向扩展（HPA）成为可能。
+- **Agent 控制工具形态**：正如 `dsh-superagent-prototype` 源码所验证的最佳实践，控制面的主路由组件（Router）应当极度轻量化，通过 `noWait` 守卫严禁任何同步阻塞等待，甚至无需挂载 Shell 或代码修改工具，仅负责监听外部事件流、管理 Ticket 会话生命周期与维护路由表：
+  - 当接收到全新任务信息需要分发时，动态拉起拥有<strong>独立会话与独立工作目录（如独立 Git Worktree 或容器沙箱）</strong>的原子 Worker Agent；
+  - 当接收到的外部信息与正在执行的某项任务存在语义重合时，Router 无需重启或打断 Worker，而是直接通过**更新对应的 SSOT 记录**，让通过 `followForContext`（或 `programmable-channel`）订阅了该 Thread 的 Worker Agent 自动感知并吸收增量信息。计算、状态与宿主环境的彻底解耦，让成百上千个原子 Agent 的并发横向扩展（HPA）成为可能。
 
 ### 3. 远期设想（暂不实现）：Agent 时代的控制面新范式——双层控制架构（Solid 内核 + 可变自演化层）
 
-> *注：本节所述架构目前停留在理论设想层面，暂时不在首期工程中实现（因为控制流的自迭代与自修改在实践中仍存在诸多收敛性与稳定性困难，需要在演进中继续细化）。但作为 Agent 时代控制层极具潜力的演进方向，在此一并阐述。*
+> *注：本节所述架构目前停留在理论设想层面，暂时不在首期工程中实现（因为控制流的自迭代与自修改在实践中仍存在诸多收敛性与评估困难，需要在演进中继续细化）。但作为 Agent 时代控制层极具潜力的演进方向，在此一并阐述。*
 
 如果仅仅是将 Kubernetes 的静态 YAML 照搬过来，我们还只是停留在“传统云原生”的思维定式里。在传统云原生中，控制面本身是死板的确定性程序，只能根据 CPU、内存或 HTTP 状态码执行机械的扩缩容；一旦遇到<strong>“静态 YAML 契约无法覆盖的语义级失败”</strong>（例如：外部依赖库接口微调、某类长尾任务需要临时补充前置转换逻辑、或模型在特定边缘场景下出现群体性降级），传统控制面只能停机告警，等待人类工程师介入修改配置。
 
@@ -226,16 +227,16 @@ Harness 负责管理上下文状态树、组装提示词、拦截并解析工具
 
 这种 **“外层程序化铁笼兜底 + 内层 Agent 动态自演化”** 的双层控制结构，既释放了 Agent 自主运维与架构演进的上限，又在工程上守住了系统永不彻底失控的底线。
 
-### 4. 控制闭环的基石：原子 Agent（如 `omp`）的白盒可观测性设计
+### 4. 控制闭环的基石：原子 Agent（如 `omp` / `omp²`）的白盒可观测性设计
 
-无论是当前阶段由确定性控制面驱动的“探针巡检与 Advisory 注入”，还是远期由“中间可变控制层”执行的动态自演化，都有一个至关重要的前提：**底层原子 Agent（如 `omp`）必须向控制层提供极高信噪比、结构化的可观测性（Observability）。**
+无论是当前阶段由确定性控制面驱动的“探针巡检与 Director/Advisory 注入”，还是远期由“中间可变控制层”执行的动态自演化，都有一个至关重要的前提：**底层原子 Agent 必须向控制层提供极高信噪比、结构化的可观测性（Observability）。**
 
-如果原子 Agent 仅仅对外输出一坨冗长的自然语言聊天记录，控制层的巡检探针或管理 Agent 在读取日志时就会因上下文污染而跟着一起崩溃。因此，设计原子 Agent 的可观测性接口，本质上是在为上层控制面设计<strong>“传感器的标准化协议”</strong>。一个优秀的原子 Agent（如 `omp`）应当在 Harness 层原生暴露以下四类结构化遥测数据：
+如果原子 Agent 仅仅对外输出一坨冗长的自然语言聊天记录，控制层的巡检探针或管理 Agent 在读取日志时就会因上下文污染而跟着一起崩溃。因此，设计原子 Agent 的可观测性接口，本质上是在为上层控制面设计<strong>“传感器的标准化协议”</strong>。一个优秀的原子 Agent（如 `omp` 及其演进版 `omp²`）应当在 Harness 层原生暴露以下四类结构化遥测数据：
 
-1. **结构化状态树与轨迹快照（Trajectory Tree & Diff）**：
-   而非扁平的文本流。将每一次 Prompt 组装、模型输出、工具调用入参/出参以及局部回滚（Rewind）编码为带时间戳与因果父子关系的树状节点。当节点异常时，控制层只需拉取树结构的摘要切片（Tree Summary），即可在常数级上下文开销内精准定位故障发生在哪一层调用。
+1. **DOM 式状态树与 Patch 流（DOM-like State Tree & Patch Stream）**：
+   而非扁平的文本流。将每一次 Prompt 组装、模型输出、工具调用入参/出参、Director 控制栈变更以及局部回滚（Rewind）编码为单一权威状态树上的增量 Patch 流（Journal）。当节点异常时，控制层只需订阅 Patch 流或拉取树结构的摘要切片（Tree Summary），即可在常数级上下文开销内精准定位故障发生在哪一层调用。
 2. **内部摩擦与隐式降级指标（Internal Friction Metrics）**：
-   前面提到，优秀的 Harness 会在内部吞掉网络抖动和局部重试以防止抽象泄露；但“不中断执行”不等于“隐瞒病情”。原子 Agent 必须通过旁路 Metrics 实时上报：**局部重试次数、Model Fallback 触发状态、Schema 校验打回频次、以及状态树回滚（Rewind）深度**。当某个节点的“内部摩擦系数”异常飙升时，控制层就能立刻感知到该节点正处于“亚健康”状态，从而提前介入注入 Advisory 或扩容分流。
+   前面提到，优秀的 Harness 会在内部吞掉网络抖动和局部重试以防止抽象泄露；但“不中断执行”不等于“隐瞒病情”。原子 Agent 必须通过旁路 Metrics 实时上报：**局部重试次数、Model Fallback 触发状态、Stream Rules / Schema 校验打回频次、以及状态树回滚（Rewind）深度**。当某个节点的“内部摩擦系数”异常飙升时，控制层就能立刻感知到该节点正处于“亚健康”状态，从而提前介入注入 Advisory 或扩容分流。
 3. **上下文水位与资源燃烧率（Context Pressure & Burn Rate）**：
    实时暴露当前 Context Window 的占用百分比、触发上下文压缩（Compaction）的次数、Prompt Cache 命中率及 Token 消耗速率。这是控制层决定“是否需要将该原子任务拆解为更细粒度的 Subagent”的核心依据。
 4. **语义进展信号（Semantic Progress Signals）**：
@@ -246,21 +247,21 @@ Harness 负责管理上下文状态树、组装提示词、拦截并解析工具
 在控制层连接的所有实体（人类、传统程序、原子 Agent）中，存在一个极其特殊的地带：
 在 `Agent <-> Agent`、`Agent <-> 人类`、`Agent <-> 传统程序` 这三类交互关系里，**变数最大、熵增最快的是 `Agent <-> Agent` 之间的直接交互**。
 
-当某个局部业务子任务不得不依赖多个原子 Agent 高频协同（例如：架构师 Agent、编码 Agent、安全审计 Agent 与红队测试 Agent 进行多轮博弈与联合迭代）时，如果让全局控制面用硬编码规则去接管它们之间的每一次对话，控制面会迅速变得臃肿不堪；但如果放任它们自由通信，非确定性的叠加又会引发灾难性的“传话筒效应（误差级联放大）”。
+当某个局部业务子任务不得不依赖多个原子 Agent 高频协同（例如：架构师 Agent、编码 Agent、安全审计 Agent 与红队测试 Agent 进行多轮博弈与联合迭代）时，如果让业务域控制面用硬编码规则去接管它们之间的每一次对话，控制面会迅速变得臃肿不堪；但如果放任它们自由通信，非确定性的叠加又会引发灾难性的“传话筒效应（误差级联放大）”。
 
-为此，我们借鉴云原生中 **Service Mesh（服务网格）** 与 **子图算子（Sub-graph Operator）** 的思想，在全局控制面与底层原子 Agent 之间，单独抽离出一个中间抽象层——**Agent Swarm**：
+为此，我们借鉴云原生中 **Service Mesh（服务网格）** 与 **子图算子（Sub-graph Operator）** 的思想，在控制面与底层原子 Agent 之间，单独抽离出一个中间抽象层——**Agent Swarm**：
 
-- **对上（面向全局控制面）：伪装为单个“超级原子 Agent”**
-  Agent Swarm 对控制面隐藏内部多 Agent 协商、辩论、打回重写的拓扑细节，仅向控制面暴露一套标准的输入/输出契约。在全局控制面眼中，调起一个 Swarm 与调起一个普通原子 Agent 没有任何区别。
+- **对上（面向控制面）：伪装为单个“超级原子 Agent”**
+  Agent Swarm 对控制面隐藏内部多 Agent 协商、辩论、打回重写的拓扑细节，仅向控制面暴露一套标准的输入/输出契约。在控制面眼中，调起一个 Swarm 与调起一个普通原子 Agent 没有任何区别。
 - **对内（管理局部高 LLM 聚集区）：实施东西向流量治理与局部质量把控**
   Swarm 的核心职责是对“高浓度 LLM 交互区”进行局部确定性加固，从而确保整体对外的高质量产出：
   1. **通信协议硬化**：禁止 Swarm 内部通过冗长的自然语言闲聊传递状态，强制要求通过共享局部黑板（Blackboard / 局部 SSOT 分支）与结构化 Artifact 进行交接；
-  2. **局部共识与交叉验证（Consensus & Cross-Check）**：复用分布式共识思想，利用不同 Profile 或不同底层模型的原子 Agent 互为 Reviewer（生成与验证分离），在局部拦截幻觉；
+  2. **局部共识与异构交叉验证（Consensus & Cross-Check）**：复用分布式共识思想，利用不同 Profile、不同底层模型家族并配合确定性验证工具的原子 Agent 互为 Reviewer（生成与验证分离，打破同源模型的错误相关性），在局部拦截幻觉与“走捷径”行为；
   3. **网格级熔断与限流（Circuit Breaking）**：当 Swarm 内部两个 Agent 陷入无限争论或循环打回超过阈值（如 Max Turns = 3）时，Swarm 网格层直接触发熔断，带着当前最优快照与分歧点退出，交由上层控制面裁决。
 
 ### 6. 控制面的边界与四大外部交互协议
 
-综上所述，控制面（含 Agent Swarm）的架构边界，涵盖了 [Agent World](https://clouder0.com/zh-hans/posts/agent-world/)、[Agent World Principles](https://clouder0.com/zh-hans/posts/agent-world-principles/)、[dsh-superagent-prototype](https://github.com/deepseek-ai/dsh-superagent-prototype) 以及 [The Harness Playbook](https://stencil.so/blog/harness-playbook) 中关于全局编排、多会话路由与环境治理的部分。
+综上所述，控制面（含 Agent Swarm）的架构边界，涵盖了 [Agent World](https://clouder0.com/zh-hans/posts/agent-world/)、[Agent World Principles](https://clouder0.com/zh-hans/posts/agent-world-principles/)、[dsh-superagent-prototype](https://github.com/deepseek-ai/dsh-superagent-prototype) 以及 [The Harness Playbook](https://stencil.so/blog/harness-playbook) 中关于业务域内全局编排、多会话路由与环境治理的部分。
 
 为了彻底打通这套架构，最后一块尚未被业界系统阐述的拼图是：**在控制面的统领下，Agent 系统与其他各部分究竟如何进行标准化交互？**
 
@@ -268,24 +269,24 @@ Harness 负责管理上下文状态树、组装提示词、拦截并解析工具
 
 | 交互链路 | 云原生流量映射 | 核心矛盾（为什么容易出问题） | 标准控制范式（如何设计控制工具） |
 | :--- | :--- | :--- | :--- |
-| **1. 人类 $\leftrightarrow$ 控制层/Agent** | **南北向入口流量**<br>(Ingress / Webhook) | **带宽极度不对称**：Agent 可每秒并发处理千条信息，而**人类的注意力（Human Attention）是整个系统中最昂贵、最不可扩展的单点瓶颈**；同时人类输入往往意图模糊且异步延迟极高。 | **注意力防火墙 + 异步挂起（Suspend/Resume）**：<br>1. 严禁底层原子 Agent 直接向人类高频刷屏，所有通知必须经由控制面聚合降噪（*“仅在人类必须行动时开口”*）；<br>2. 遇到必须人类拍板的高危决策或信息缺失时，控制面将当前任务状态序列化落盘并挂起（释放计算资源），通过 IM/PR 发送高信噪比卡片，待人类异步回调 Webhook 后再恢复状态机。 |
+| **1. 人类 $\leftrightarrow$ 控制层/Agent** | **南北向入口流量**<br>(Ingress / Webhook) | **带宽极度不对称**：Agent 可每秒并发处理千条信息，而**人类的注意力（Human Attention）是整个系统中最昂贵、最不可扩展的单点瓶颈**；同时人类输入往往意图模糊且异步延迟极高。 | **注意力防火墙 + 异步挂起（Suspend/Resume）**：<br>1. 像 `dsh-superagent-prototype` 一样，从物理上剥离底层 Worker Agent 面向人类的直接通信工具，所有通知必须经由控制面聚合降噪（*“人类设定目标、预算与风险边界，控制面仅在人类必须行动时开口”*）；<br>2. 遇到越过风险边界的高危决策或关键信息缺失时，控制面将当前任务状态序列化落盘并挂起（释放计算资源），通过 IM/PR 发送高信噪比卡片，待人类异步回调后再恢复状态机。 |
 | **2. 传统程序 $\leftrightarrow$ Agent** | **异构系统 RPC 网关**<br>(Anti-Corruption Layer) | **确定性契约 vs 概率性输出**：传统代码要求 100% 严格的强类型 Schema 与确定性状态码；而 LLM 天然倾向于输出带有解释性废话的自然语言。 | **双向反腐层（ACL, Anti-Corruption Layer）**：<br>1. **程序调 Agent**：通过强类型 SDK 封装，将函数入参渲染为结构化约束，并在出口处挂载 Schema Validator（校验失败则在 Harness 内直接重试，绝不向业务代码抛出脏文本）；<br>2. **Agent 调程序**：将传统微服务包装为具备幂等性（Idempotency）与清晰错误码反馈的确定性 Tool，用程序的高确定性为 Agent 兜底。 |
-| **3. Agent $\leftrightarrow$ 外部世界底座** | **南北向出口流量**<br>(Egress / CSI 存储挂载) | **不可逆的外部副作用（Side Effects）**：读世界（搜索、查文件）是安全的，但写世界（发邮件、删库、合并主干分支、扣费）具有不可逆的破坏力。 | **读写分离 + 事务沙箱（Dry-Run & Copy-on-Write）**：<br>控制面对所有通向外部 Infrastructure 的写操作实施分级拦截。低风险写操作在隔离沙箱（如 Git 临时分支、影子数据库）中自由执行；高危写操作必须生成确定性的变更计划（Plan/Diff），通过控制面的策略引擎审计（或人类审批）后，由确定性脚本统一 Apply 到真实世界。 |
-| **4. Agent $\leftrightarrow$ Agent** | **东西向网格流量**<br>(East-West Service Mesh) | **高昂的序列化损耗与语义漂移**：Agent A 将内部状态转化为自然语言发给 Agent B，B 再理解成内部状态——每次通信都是一次有损压缩，极易引发多跳失真。 | **引用传递（Pass-by-Reference）优先于值传递**：<br>在控制面或 Swarm 内部，两个原子 Agent 之间严禁通过大段聊天记录“口耳相传”。上游 Agent 必须将产物写入 SSOT，仅向下游 Agent 传递**轻量级的状态引用（如文件路径、Git Commit Hash、数据库行 ID）与结构化元数据**，由下游 Agent 直接从 SSOT 读取一手客观事实。 |
+| **3. Agent $\leftrightarrow$ 外部世界底座** | **南北向出口流量**<br>(Egress / Transactional Effects) | **不可逆的外部副作用（Side Effects）**：读世界（搜索、查文件）是安全的，但写世界（发邮件、删库、合并主干分支、扣费）具有不可逆的破坏力。 | **自由认知，事务性副作用（Free Cognition, Transactional Effects）**：<br>遵循《Agent World》核心原则与 `dsh-superagent-prototype` 的 `Effects` 队列模式：控制面对所有通向外部 Infrastructure 的写操作实施事务化拦截。低风险写操作在隔离沙箱（如 Git 临时分支）中自由执行；高危写操作必须在事务内入队生成确定性的变更计划（Plan/Diff），通过控制面的策略引擎审计后再统一 Commit 并执行外部副作用。 |
+| **4. Agent $\leftrightarrow$ Agent** | **东西向网格流量**<br>(East-West Service Mesh) | **高昂的序列化损耗与语义漂移**：Agent A 将内部状态转化为自然语言发给 Agent B，B 再理解成内部状态——每次通信都是一次有损压缩，极易引发多跳失真。 | **引用传递（Pass-by-Reference）优先于值传递**：<br>在控制面或 Swarm 内部，两个原子 Agent 之间严禁通过大段聊天记录“口耳相传”。上游 Agent 必须将产物与过程性记录写入 SSOT，仅向下游 Agent 传递**轻量级的状态引用（如文件路径、Git Commit Hash、Ticket ID）与结构化元数据**，由下游 Agent 直接从 SSOT 读取一手客观事实（跨 Domain 则走显式的 Export/Import 边界协议）。 |
 
 ---
 
 ## Infrastructure（世界底座）：Agent 架构的物理基石
 
-在前探讨原子 Agent 与控制层时，**Infrastructure（世界底座）** 这一概念贯穿始终。正如 [Agent World](https://clouder0.com/zh-hans/posts/agent-world/) 与 [Agent World Principles](https://clouder0.com/zh-hans/posts/agent-world-principles/) 所深刻洞见的：脱离了对所处“世界底座”的工程化认知，任何 Agent 架构都会退化为空中楼阁。本节将系统收敛本文对 Infrastructure 的核心定论。
+在前文探讨原子 Agent 与控制层时，**Infrastructure（世界底座）** 这一概念贯穿始终。正如 [Agent World](https://clouder0.com/zh-hans/posts/agent-world/) 与 [Agent World Principles](https://clouder0.com/zh-hans/posts/agent-world-principles/) 所深刻洞见的：脱离了对所处“世界底座”的工程化认知，任何 Agent 架构都会退化为空中楼阁。本节将系统收敛本文对 Infrastructure 的核心定论。
 
 ### 1. 本体论：人类既有基建的复用 vs. 针对 Agent 特性开发的原生基建
 
 Agent 所依赖的 Infrastructure 包含两大来源：**一是人类软件工业已有的成熟基建，二是专门针对 Agent 认知与运行特性而开发的原生基建（Agent-Native Infrastructure）。**
 
 - **天然契合的人类既有基建**：诸如 Linux 命令行工具链、Git 版本控制、编译器、LSP（语言服务协议）以及关系型数据库。它们之所以能被 Agent 无缝复用，是因为它们在设计之初就遵循了<strong>纯文本/结构化协议流、确定性状态转换与可组合性（Composability）</strong>原则。
-- **真正针对 Agent 特性开发的产物**：由于 LLM 具有“上下文窗口有限、单步输出带概率性偏移、缺乏人类视觉直觉、高并发试错成本低”的独特属性，真正的 Agent 专属基建必须围绕这些特性发力。例如：支持毫秒级 Copy-on-Write 克隆与回滚的隔离沙箱、面向上下文预算优化的 AST 语义切片器、提供结构化状态树与旁路 Advisory 注入的 Harness（如 `omp`），以及支持确定性状态订阅的可编程通信管道（如 `programmable-channel`）。
-- **警惕“拟人化伪基建”的歧途**：反观当下市面上诸如 **clawbook** 这类扯淡产品，很明显就完全不是针对 Agent 特性所做的 Infrastructure。人类需要社交网络信息流（Feed）、点赞与闲聊广场，是因为人类受生物多巴胺与社交情感驱动；而将这些高噪声、低信噪比、毫无确定性契约收敛的人类社交表象生搬硬套给 Agent，让一群模型在里面发帖灌水、互相传染幻觉，除了白白燃烧 Token 与制造上下文垃圾外，对解决实际工程问题毫无益处。**检验一项产品是否属于合格的 Agent Infrastructure，唯一标准是看它是否在帮 LLM“降低交互信息熵、提供确定性环境反馈、扩大有效行动边界”，而非看它模仿人类社会的表面形式有多逼真。**
+- **真正针对 Agent 特性开发的产物**：由于 LLM 具有“上下文窗口有限、单步输出带概率性偏移、缺乏人类视觉直觉、高并发试错成本低”的独特属性，真正的 Agent 专属基建必须围绕这些特性发力。例如：支持毫秒级 Copy-on-Write 克隆与回滚的隔离沙箱、面向上下文预算优化的 AST 语义切片器、提供 DOM 式状态树与旁路 Director/Advisory 注入的 Harness（如 `omp` / `omp²`），以及支持确定性状态订阅的可编程通信管道（如 `programmable-channel`）。
+- **警惕“拟人化伪基建”的歧途**：反观当下市面上诸如 **clawbook** 这类扯淡产品，很明显就完全不是针对 Agent 特性所做的 Infrastructure。人类需要社交网络信息流（Feed）、点赞与闲聊广场，是因为人类受生物多巴胺与社交情感驱动；而将这些高噪声、低信噪比、毫无确定性契约收敛的人类社交表象生搬硬套给 Agent，让一群模型在里面发帖灌水、互相传染幻觉，除了白白燃烧 Token 与制造上下文垃圾外，对解决实际工程问题毫无益处。**检验一项产品是否属于合格的 Agent Infrastructure，唯一标准是看它是否在帮 LLM“定义清晰的物理边界、降低交互信息熵、提供确定性环境反馈”，而非看它模仿人类社会的表面形式有多逼真。**
 
 ### 2. 能力供给的二元来源：契约强制要求 vs. 最佳实践赋能
 
@@ -301,7 +302,7 @@ Infrastructure 必须先行搭建完备，才能向上层原子 Agent 与控制�
 从信息论视角来看，封闭在 LLM 上下文窗口内部的自回归推理是一个不断累加扰动、走向熵增的过程。要对抗这种内生熵增，系统必须从外部引入负熵。
 
 **Infrastructure 在整个架构中最核心的职能，就是提供独立于任何 Agent 主观记忆之外的客观 SSOT（Single Source of Truth）。**
-无论是 Git 树中的 Commit 历史、持久化数据库中的事务状态，还是真实物理世界传感器的读数，Infrastructure 以冷酷、不可篡改（或仅能通过确定性协议变更）的客观存在，充当了所有原子 Agent 与控制面调谐循环的“绝对坐标系”。只要外部 Infrastructure 的 SSOT 稳固且分级清晰，哪怕上层某几个原子 Agent 彻底崩溃销毁，整个系统的业务进度依然坚如磐石，随时可以拉起新的无状态实例继续演进。
+无论是 Git 树中的 Commit 历史、单写者持久化数据库中的事务状态与过程日志，还是真实物理世界传感器的读数，Infrastructure 以冷酷、不可篡改（或仅能通过事务性 Effects 协议变更）的客观存在，充当了业务域内所有原子 Agent 与控制面调谐循环的“绝对坐标系”。只要外部 Infrastructure 的 SSOT 稳固且分级清晰，哪怕上层某几个原子 Agent 彻底崩溃销毁，整个系统的业务进度依然坚如磐石，随时可以拉起新的无状态实例继续演进。
 
 ---
 
@@ -310,8 +311,8 @@ Infrastructure 必须先行搭建完备，才能向上层原子 Agent 与控制�
 破除「Agent 迷思」，本质上是让 AI 工程从早期的“炼丹术、提示词作坊与拟人化噱头”，正式走向成熟的**分布式系统工程**。
 
 当我们承认 LLM“语料偏见下近似解生成器”的客观边界，正视其内生的混沌效应与不稳定性，架构的演进方向便不再迷茫：
-- **在世界底座（Infrastructure）**，摒弃华而不实的拟人化伪产品，扎实搭建提供客观 **SSOT** 与确定性反馈的 Agent 原生基建；
-- **在数据面（原子 Agent）**，通过 **Harness + LLM + 局部 Infrastructure** 封装出高内聚、无状态、遵循九大中立原则并暴露白盒可观测性指标的最小执行单元，在局部将不确定性关进契约的笼子；
-- **在控制面（控制层与 Agent Swarm）**，全面复用并演进云原生的架构智慧，通过**全生命周期契约管线（前置准入、运行期不变式探针与 `omp` 式 Advisory 纠偏、后置验收门禁）**、声明式调谐循环与四大外部交互协议完成确定性治理，并向着 **“外层 Solid 程序化内核兜底 + 内层可变控制层动态自演化”** 的远期图景稳步演进。
+- **在世界底座（Infrastructure）**，摒弃华而不实的拟人化伪产品，扎实搭建提供客观分级 **SSOT**、事务性副作用（Transactional Effects）与确定性反馈的 Agent 原生基建；
+- **在数据面（原子 Agent）**，通过 **Harness + LLM + 局部 Infrastructure** 封装出高内聚、基于 Journal/Patch 纯函数推导、遵循九大中立原则并暴露白盒可观测性指标的最小执行单元，在局部将不确定性关进契约的笼子；
+- **在业务域控制面（Domain Control Plane 与 Agent Swarm）**，全面复用并演进云原生的架构智慧，通过**全生命周期契约管线（前置准入、运行期不变式沙箱与 `omp` 式 Advisory 纠偏、后置硬验收门禁）**、声明式调谐循环与四大外部交互协议完成确定性治理，并向着 **“外层 Solid 程序化内核兜底 + 内层可变控制层动态自演化”** 的远期图景稳步演进。
 
 我们无需等待一个全知全能、永不犯错的“神级单体模型”降临；用确定性的云原生控制骨架与坚实的外部世界基建，去驾驭非确定性的原子智能算子，这便是当下构建高可靠 Agent 系统的唯一通途。
