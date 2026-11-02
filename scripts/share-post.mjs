@@ -62,19 +62,66 @@ try {
   await waitForServer(baseUrl, 30_000);
   browser = await puppeteer.launch({ channel: 'chrome', headless: true });
   const page = await browser.newPage();
-  await page.setViewport({ width: 760, height: 1200, deviceScaleFactor: 2 });
+  const scale = 2;
+  const cssWidth = 760;
+  const sliceHeight = 1200;
+  await page.setViewport({ width: cssWidth, height: sliceHeight, deviceScaleFactor: scale });
   const response = await page.goto(`${baseUrl}/blog/${slug}/share/`, { waitUntil: 'networkidle0' });
   if (!response?.ok()) throw new Error(`Share page returned HTTP ${response?.status()}`);
   await page.evaluate(() => document.fonts.ready);
+  await page.addStyleTag({
+    content: 'html, body { scrollbar-width: none; } ::-webkit-scrollbar { display: none; }',
+  });
   const contentHeight = await page.evaluate(() => document.documentElement.offsetHeight);
 
   const outputDirectory = path.join(repoRoot, 'share');
   await fs.mkdir(outputDirectory, { recursive: true });
   const outputPath = path.join(outputDirectory, `${slug}.png`);
-  await page.screenshot({
-    path: outputPath,
-    clip: { x: 0, y: 0, width: 760, height: contentHeight },
-  });
+
+  // Chrome caps the painted surface at roughly 16384 device pixels, so a single
+  // capture repeats the page for long posts. Capture fixed-size viewport tiles and stitch them.
+  const scratchDirectory = path.join(outputDirectory, `.${slug}-slices`);
+  await fs.rm(scratchDirectory, { recursive: true, force: true });
+  await fs.mkdir(scratchDirectory, { recursive: true });
+  const sliceCount = Math.max(1, Math.ceil(contentHeight / sliceHeight));
+  const pageTallerThanSlice = contentHeight > sliceHeight;
+  const tiles = [];
+  try {
+    for (let index = 0; index < sliceCount; index += 1) {
+      const top = Math.min(index * sliceHeight, Math.max(0, contentHeight - sliceHeight));
+      const rows = Math.min(sliceHeight, contentHeight - index * sliceHeight) * scale;
+      await page.evaluate((offset) => window.scrollTo(0, offset), top);
+      await page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+      );
+      const file = path.join(scratchDirectory, `slice-${String(index).padStart(3, '0')}.png`);
+      await page.screenshot({ path: file, captureBeyondViewport: false });
+      // Chrome clamps scrolling, so a trailing tile is anchored to the page bottom and the
+      // wanted rows sit at the bottom of that capture. A page shorter than the viewport is
+      // the opposite case: its rows sit at the top.
+      const fromBottom = pageTallerThanSlice && rows < sliceHeight * scale;
+      tiles.push({ file, rows, fromBottom });
+    }
+
+    const inputs = tiles.flatMap((tile) => ['-i', tile.file]);
+    const cropFilters = tiles.map((tile, index) => {
+      const label = tiles.length === 1 ? 'out' : `s${index}`;
+      const offset = tile.fromBottom ? `ih-${tile.rows}` : '0';
+      return `[${index}:v]crop=${cssWidth * scale}:${tile.rows}:0:${offset}[${label}]`;
+    });
+    const filter = tiles.length === 1
+      ? cropFilters[0]
+      : `${cropFilters.join(';')};${tiles.map((_, index) => `[s${index}]`).join('')}vstack=inputs=${tiles.length}[out]`;
+    await run('ffmpeg', [
+      '-v', 'error', '-y',
+      ...inputs,
+      '-filter_complex', filter,
+      '-map', '[out]',
+      outputPath,
+    ]);
+  } finally {
+    await fs.rm(scratchDirectory, { recursive: true, force: true });
+  }
   console.log(`Saved ${path.relative(process.cwd(), outputPath)}`);
 } finally {
   await browser?.close();
